@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,14 +73,14 @@ fun PlaylistsScreen(vm: LibraryViewModel) {
     }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-        ScreenHeader("Playlist", tr("${playlists.size} playlist", "${playlists.size} playlists")) {
+        ScreenHeader(stringResource(R.string.nav_playlists)) {
             IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, tr("Playlist baru", "New playlist")) }
         }
         if (playlists.isEmpty()) {
             EmptyState(
                 Icons.AutoMirrored.Filled.QueueMusic,
                 tr("Belum ada playlist", "No playlists yet"),
-                tr("Buat playlist dengan tombol + di atas, lalu tambahkan lagu dari Library.", "Create one with the + button above, then add songs from the Library.")
+                tr("Buat playlist dengan tombol + di atas, lalu tambahkan lagu dari Koleksi Musik.", "Create one with the + button above, then add songs from the Library.")
             )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -149,7 +150,7 @@ private fun PlaylistDetail(vm: LibraryViewModel, playlistId: Long, name: String)
             EmptyState(
                 Icons.AutoMirrored.Filled.QueueMusic,
                 tr("Playlist ini masih kosong", "This playlist is empty"),
-                tr("Buka Library, ketuk ⋮ pada lagu, lalu pilih \"Tambah ke playlist\".", "Open the Library, tap ⋮ on a song, then choose \"Add to playlist\".")
+                tr("Buka Koleksi Musik, ketuk ⋮ pada lagu, lalu pilih \"Tambah ke playlist\".", "Open the Library, tap ⋮ on a song, then choose \"Add to playlist\".")
             )
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -190,7 +191,7 @@ private fun PlaylistDetail(vm: LibraryViewModel, playlistId: Long, name: String)
     if (deleting) {
         ConfirmDialog(
             tr("Hapus playlist \"$name\"?", "Delete playlist \"$name\"?"),
-            tr("Lagu-lagunya tetap ada di Library.", "Its songs stay in the Library."),
+            tr("Lagu-lagunya tetap ada di Koleksi Musik.", "Its songs stay in the Library."),
             tr("Hapus", "Delete"),
             onConfirm = { vm.deletePlaylist(playlistId); deleting = false },
             onDismiss = { deleting = false }

@@ -84,6 +84,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.thecrudify.zdownload.R
+import com.thecrudify.zdownload.data.library.LibraryQuery
 import com.thecrudify.zdownload.data.db.Track
 import com.thecrudify.zdownload.data.library.LibrarySection
 import com.thecrudify.zdownload.data.library.TrackGroup
@@ -204,7 +205,7 @@ fun LibraryScreen(vm: LibraryViewModel) {
             group != null -> LazyColumn(Modifier.fillMaxSize()) {
                 item {
                     GroupHeader(
-                        name = group.orEmpty(),
+                        name = groupLabel(group.orEmpty()),
                         artworkPath = groups.firstOrNull { it.name == group }?.artworkPath ?: tracks.firstOrNull()?.entity?.artworkPath,
                         trackCount = tracks.size,
                         shape = if (isArtists) CircleShape else MaterialTheme.shapes.medium,
@@ -226,7 +227,7 @@ fun LibraryScreen(vm: LibraryViewModel) {
                 gridItemsIndexed(groups, key = { _, g -> g.name }) { _, g ->
                     GridCell(
                         artworkPath = g.artworkPath,
-                        title = g.name,
+                        title = groupLabel(g.name),
                         subtitle = groupSubtitle(section, g),
                         shape = if (isArtists) CircleShape else MaterialTheme.shapes.medium,
                         centered = isArtists,
@@ -237,7 +238,7 @@ fun LibraryScreen(vm: LibraryViewModel) {
 
             section.isGrouped -> LazyColumn(Modifier.fillMaxSize()) {
                 itemsIndexed(groups, key = { _, g -> g.name }) { _, g ->
-                    ListRow(title = g.name, subtitle = groupSubtitle(section, g), onClick = { vm.group.value = g.name }) {
+                    ListRow(title = groupLabel(g.name), subtitle = groupSubtitle(section, g), onClick = { vm.group.value = g.name }) {
                         Artwork(g.artworkPath, Modifier.size(56.dp), shape = if (isArtists) CircleShape else MaterialTheme.shapes.small)
                     }
                 }
@@ -517,13 +518,6 @@ private fun LazyListScope.trackRows(
             onLongClick = { vm.toggleSelected(track.id) }
         ) {
             var menu by remember { mutableStateOf(false) }
-            IconButton(onClick = { vm.toggleFavorite(track) }) {
-                Icon(
-                    if (track.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    if (track.isFavorite) tr("Hapus dari favorit", "Remove from favorites") else tr("Tambah ke favorit", "Add to favorites"),
-                    tint = if (track.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
             Box {
                 IconButton(onClick = { menu = true }) {
                     Icon(Icons.Default.MoreVert, tr("Opsi lagu", "Song options"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -532,4 +526,12 @@ private fun LazyListScope.trackRows(
             }
         }
     }
+}
+
+/** NO_ALBUM / NO_GENRE are internal grouping keys; only their display follows the language. */
+@Composable
+private fun groupLabel(name: String): String = when (name) {
+    LibraryQuery.NO_ALBUM -> tr("(Tanpa album)", "(No album)")
+    LibraryQuery.NO_GENRE -> tr("(Tanpa genre)", "(No genre)")
+    else -> name
 }

@@ -20,6 +20,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
@@ -108,6 +110,10 @@ fun TrackMenu(
 ) {
     val context = LocalContext.current
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        MenuItem(
+            if (track.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            if (track.isFavorite) tr("Hapus dari favorit", "Remove from favorites") else tr("Tambah ke favorit", "Add to favorites")
+        ) { vm.toggleFavorite(track); onDismiss() }
         MenuItem(Icons.Default.SkipNext, tr("Putar berikutnya", "Play next")) { vm.playNext(listOf(track)); onDismiss() }
         MenuItem(Icons.AutoMirrored.Filled.QueueMusic, tr("Tambah ke antrean", "Add to queue")) { vm.addToQueue(listOf(track)); onDismiss() }
         MenuItem(Icons.AutoMirrored.Filled.PlaylistAdd, tr("Tambah ke playlist", "Add to playlist")) { actions.addingToPlaylist = listOf(track); onDismiss() }

@@ -83,7 +83,6 @@ fun TrackRow(
                 }
             }
         }
-        Text(formatDuration(track.entity.durationMs), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
         trailing()
     }
 }
