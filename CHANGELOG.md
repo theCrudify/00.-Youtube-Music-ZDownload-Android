@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0] — 2026-11-17
+
+Measured on the emulator with one 3:33 song, "Original" format:
+
+| | 1.1.0 | 1.2.0 |
+|---|---|---|
+| Data downloaded | 11.28 MB (360p video) | 3.27 MB (audio only) |
+| Tap "Download" → file ready | 9.3 s | 3.8 s |
+| Source audio | AAC ~96 kbps | Opus ~128 kbps |
+
+### Performance
+- Removed the forced `player_client=android`: it made YouTube return only a 360p video stream. Now downloads the audio-only stream.
+- Download reuses the analysis result (`--load-info-json`) instead of extracting the video a second time; falls back to the link if the saved data is stale.
+
 ## [1.1.0] — 2026-11-17
 
 ### Added

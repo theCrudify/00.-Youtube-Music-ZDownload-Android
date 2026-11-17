@@ -163,6 +163,8 @@ adb shell am start -a android.intent.action.SEND -t text/plain \
 - **yt-dlp self-update:** at most once per 24h, and *before* `enginesReady` completes. Updating while a request runs swaps the files under it and that request fails.
 - **Animations:** the background orbs and vinyl disc animate only while analyzing/downloading. When idle, nothing redraws, so the screen costs no GPU/battery.
 - **Progress:** UI updates are throttled to 5/s; yt-dlp prints far more lines than that.
+- **No forced YouTube client:** never add `--extractor-args youtube:player_client=android`. With it YouTube only offers format 18 (360p *video*, ~96 kbps audio), so the app downloaded 11.3 MB of video to keep 3 MB of audio. yt-dlp's default client selection gets audio-only Opus/M4A (~128 kbps): 3.3 MB for the same song.
+- **One extraction per song:** analysis saves yt-dlp's JSON (`cacheDir/trackinfo.json`) and the download reuses it via `--load-info-json` instead of resolving the video again. If the saved stream URLs have expired, it falls back to the link.
 - **`--no-playlist`** on every request: YT Music share links carry `&list=…`, which otherwise resolves the whole playlist.
 - **Downloads go through `cacheDir`:** scoped storage only allows audio in `Music/`, but yt-dlp writes the cover as `.webp` there before embedding it. The finished audio is copied to `Music/ZDownload`.
 
