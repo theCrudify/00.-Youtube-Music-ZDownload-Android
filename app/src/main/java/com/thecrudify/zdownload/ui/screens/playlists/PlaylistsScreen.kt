@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.thecrudify.zdownload.R
 import com.thecrudify.zdownload.ui.components.ConfirmDialog
 import com.thecrudify.zdownload.ui.components.EmptyState
 import com.thecrudify.zdownload.ui.components.ScreenHeader

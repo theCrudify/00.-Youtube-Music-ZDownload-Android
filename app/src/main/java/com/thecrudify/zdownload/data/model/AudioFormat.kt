@@ -17,7 +17,7 @@ enum class AudioFormat(
     // Getters, not constructor values, so they follow a language change made after startup.
     val badge: String
         get() = when (this) {
-            ORIGINAL -> t("Stream Asli", "Original Stream")
+            ORIGINAL -> t("Tanpa konversi", "Untouched stream")
             MP3 -> "320 kbps"
             M4A -> "256 kbps"
             FLAC -> "Lossless"
