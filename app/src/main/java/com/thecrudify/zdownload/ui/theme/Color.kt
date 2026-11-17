@@ -1,120 +1,84 @@
 package com.thecrudify.zdownload.ui.theme
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
-@Immutable
-data class AppColors(
-    val isDark: Boolean,
-    val background: Color,
-    val surface: Color,
-    val surfaceElevated: Color,
-    val surfaceElevatedHover: Color,
-    val surfaceInput: Color,
-    val playerBackground: Color,
-    val miniPlayerBackground: Color,
-    val navigationBackground: Color,
-    val textPrimary: Color,
-    val textSecondary: Color,
-    val textMuted: Color,
-    val borderSubtle: Color,
-    val borderHighlight: Color,
-    val primary: Color,
-    val onPrimary: Color,
-    val secondary: Color,
-    val onSecondary: Color,
-    val accentBlue: Color,
-    val accentCyan: Color,
-    val accentViolet: Color,
-    val accentAmber: Color,
-    val accentEmerald: Color,
-    val error: Color,
-    val success: Color,
-    val warning: Color
+// Fallback scheme for Android < 12 (no dynamic color): M3 tonal palette from a warm vinyl-orange seed.
+val DarkFallbackScheme = darkColorScheme(
+    primary = Color(0xFFFFB59E),
+    onPrimary = Color(0xFF5D1900),
+    primaryContainer = Color(0xFF842A0E),
+    onPrimaryContainer = Color(0xFFFFDBD0),
+    secondary = Color(0xFFE7BDB2),
+    onSecondary = Color(0xFF442A22),
+    secondaryContainer = Color(0xFF5D4037),
+    onSecondaryContainer = Color(0xFFFFDBD0),
+    tertiary = Color(0xFFD8C58D),
+    onTertiary = Color(0xFF3B2F05),
+    tertiaryContainer = Color(0xFF53461A),
+    onTertiaryContainer = Color(0xFFF5E1A7),
+    background = Color(0xFF1A110F),
+    onBackground = Color(0xFFF1DFDA),
+    surface = Color(0xFF1A110F),
+    onSurface = Color(0xFFF1DFDA),
+    surfaceVariant = Color(0xFF53433F),
+    onSurfaceVariant = Color(0xFFD8C2BC),
+    outline = Color(0xFFA08C87),
+    outlineVariant = Color(0xFF53433F),
+    surfaceDim = Color(0xFF1A110F),
+    surfaceBright = Color(0xFF423734),
+    surfaceContainerLowest = Color(0xFF140C0A),
+    surfaceContainerLow = Color(0xFF231917),
+    surfaceContainer = Color(0xFF271D1B),
+    surfaceContainerHigh = Color(0xFF322825),
+    surfaceContainerHighest = Color(0xFF3D3230),
 )
 
-val DarkAppColors = AppColors(
-    isDark = true,
-    background = Color(0xFF07090E),
-    surface = Color(0xFF0F121A),
-    surfaceElevated = Color(0xFF161A26),
-    surfaceElevatedHover = Color(0xFF1E2436),
-    surfaceInput = Color(0xFF0A0C14),
-    playerBackground = Color(0xFF07090E),
-    miniPlayerBackground = Color(0xFF141824),
-    navigationBackground = Color(0xFF0F121A),
-    textPrimary = Color(0xFFF8FAFC),
-    textSecondary = Color(0xFF94A3B8),
-    textMuted = Color(0xFF64748B),
-    borderSubtle = Color(0x1FFFFFFF),
-    borderHighlight = Color(0x33FFFFFF),
-    primary = Color(0xFF06B6D4),
-    onPrimary = Color(0xFF07090E),
-    secondary = Color(0xFF3B82F6),
-    onSecondary = Color(0xFFF8FAFC),
-    accentBlue = Color(0xFF3B82F6),
-    accentCyan = Color(0xFF06B6D4),
-    accentViolet = Color(0xFF8B5CF6),
-    accentAmber = Color(0xFFF59E0B),
-    accentEmerald = Color(0xFF10B981),
-    error = Color(0xFFEF4444),
-    success = Color(0xFF10B981),
-    warning = Color(0xFFF59E0B)
-)
-
-val LightAppColors = AppColors(
-    isDark = false,
-    background = Color(0xFFF1F5F9),
-    surface = Color(0xFFFFFFFF),
-    surfaceElevated = Color(0xFFFFFFFF),
-    surfaceElevatedHover = Color(0xFFE2E8F0),
-    surfaceInput = Color(0xFFFFFFFF),
-    playerBackground = Color(0xFFF8FAFC),
-    miniPlayerBackground = Color(0xFFFFFFFF),
-    navigationBackground = Color(0xFFFFFFFF),
-    textPrimary = Color(0xFF0F172A),
-    textSecondary = Color(0xFF334155),
-    textMuted = Color(0xFF64748B),
-    borderSubtle = Color(0x1E000000),
-    borderHighlight = Color(0x33000000),
-    primary = Color(0xFF0891B2),
+val LightFallbackScheme = lightColorScheme(
+    primary = Color(0xFFA23F1E),
     onPrimary = Color(0xFFFFFFFF),
-    secondary = Color(0xFF2563EB),
+    primaryContainer = Color(0xFFFFDBD0),
+    onPrimaryContainer = Color(0xFF3A0B00),
+    secondary = Color(0xFF77574D),
     onSecondary = Color(0xFFFFFFFF),
-    accentBlue = Color(0xFF2563EB),
-    accentCyan = Color(0xFF0891B2),
-    accentViolet = Color(0xFF7C3AED),
-    accentAmber = Color(0xFFD97706),
-    accentEmerald = Color(0xFF059669),
-    error = Color(0xFFDC2626),
-    success = Color(0xFF059669),
-    warning = Color(0xFFD97706)
+    secondaryContainer = Color(0xFFFFDBD0),
+    onSecondaryContainer = Color(0xFF2C150F),
+    tertiary = Color(0xFF6C5D2F),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFF5E1A7),
+    onTertiaryContainer = Color(0xFF231B00),
+    background = Color(0xFFFFF8F6),
+    onBackground = Color(0xFF231917),
+    surface = Color(0xFFFFF8F6),
+    onSurface = Color(0xFF231917),
+    surfaceVariant = Color(0xFFF5DED8),
+    onSurfaceVariant = Color(0xFF53433F),
+    outline = Color(0xFF85736E),
+    outlineVariant = Color(0xFFD8C2BC),
+    surfaceDim = Color(0xFFE8D6D2),
+    surfaceBright = Color(0xFFFFF8F6),
+    surfaceContainerLowest = Color(0xFFFFFFFF),
+    surfaceContainerLow = Color(0xFFFFF1ED),
+    surfaceContainer = Color(0xFFFCEAE5),
+    surfaceContainerHigh = Color(0xFFF7E4DF),
+    surfaceContainerHighest = Color(0xFFF1DFDA),
 )
 
-val LocalAppColors = staticCompositionLocalOf { DarkAppColors }
-
-object AppTheme {
-    val colors: AppColors
-        @Composable
-        get() = LocalAppColors.current
-}
-
-// Semantic tokens dynamically connected to the current theme
-val BgBase: Color @Composable get() = LocalAppColors.current.background
-val BgElevated: Color @Composable get() = LocalAppColors.current.surfaceElevated
-val BgElevatedHover: Color @Composable get() = LocalAppColors.current.surfaceElevatedHover
-val SurfaceInput: Color @Composable get() = LocalAppColors.current.surfaceInput
-val BorderSubtle: Color @Composable get() = LocalAppColors.current.borderSubtle
-val BorderHighlight: Color @Composable get() = LocalAppColors.current.borderHighlight
-
-val AccentBlue: Color @Composable get() = LocalAppColors.current.accentBlue
-val AccentCyan: Color @Composable get() = LocalAppColors.current.accentCyan
-val AccentViolet: Color @Composable get() = LocalAppColors.current.accentViolet
-val AccentAmber: Color @Composable get() = LocalAppColors.current.accentAmber
-val AccentEmerald: Color @Composable get() = LocalAppColors.current.accentEmerald
-
-val TextPrimary: Color @Composable get() = LocalAppColors.current.textPrimary
-val TextSecondary: Color @Composable get() = LocalAppColors.current.textSecondary
-val TextMuted: Color @Composable get() = LocalAppColors.current.textMuted
+// shortcut: legacy names aliased onto M3 roles so unconverted screens keep compiling; delete once every screen uses MaterialTheme.colorScheme directly.
+val BgBase: Color @Composable get() = MaterialTheme.colorScheme.surface
+val BgElevated: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainer
+val BgElevatedHover: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainerHighest
+val SurfaceInput: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
+val BorderSubtle: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
+val BorderHighlight: Color @Composable get() = MaterialTheme.colorScheme.outline
+val AccentCyan: Color @Composable get() = MaterialTheme.colorScheme.primary
+val AccentBlue: Color @Composable get() = MaterialTheme.colorScheme.secondary
+val AccentViolet: Color @Composable get() = MaterialTheme.colorScheme.tertiary
+val AccentAmber: Color @Composable get() = MaterialTheme.colorScheme.tertiary
+val AccentEmerald: Color @Composable get() = MaterialTheme.colorScheme.primary
+val TextPrimary: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+val TextSecondary: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
+val TextMuted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
