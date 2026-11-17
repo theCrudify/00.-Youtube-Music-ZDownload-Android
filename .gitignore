@@ -1,0 +1,20 @@
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+app/build/
+
+# Local config (SDK path, signing)
+local.properties
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Release binaries (attach to GitHub Releases instead)
+releases/
+*.apk
+*.aab
