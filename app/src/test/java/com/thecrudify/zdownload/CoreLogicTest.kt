@@ -1,11 +1,14 @@
 package com.thecrudify.zdownload
 
+import com.thecrudify.zdownload.data.db.DownloadStatus
 import com.thecrudify.zdownload.data.db.Track
 import com.thecrudify.zdownload.data.db.TrackEntity
 import com.thecrudify.zdownload.data.download.YtDlp
 import com.thecrudify.zdownload.data.library.LibraryQuery
 import com.thecrudify.zdownload.data.library.LibrarySection
 import com.thecrudify.zdownload.data.library.TrackSort
+import com.thecrudify.zdownload.data.metadata.TagEdit
+import com.thecrudify.zdownload.data.metadata.TagWriter
 import com.thecrudify.zdownload.data.model.AudioFormat
 import com.thecrudify.zdownload.data.storage.safeFileName
 import com.thecrudify.zdownload.ui.components.formatBytes
@@ -234,5 +237,58 @@ class CoreLogicTest {
         val track = mockTrack("1", "Song with lyrics", "Artist", lyrics = "Hello, world!\nLine 2")
         assertNotNull(track.entity.lyrics)
         assertEquals("Hello, world!\nLine 2", track.entity.lyrics)
+    }
+
+    // ---- 6. TagWriter & Status Tests -----------------------------------------------------
+
+    @Test
+    fun tagWriter_canWriteFormats() {
+        assertTrue(TagWriter.canWrite("mp3"))
+        assertTrue(TagWriter.canWrite("MP3"))
+        assertTrue(TagWriter.canWrite("flac"))
+        assertTrue(TagWriter.canWrite("m4a"))
+
+        assertFalse(TagWriter.canWrite("opus"))
+        assertFalse(TagWriter.canWrite("wav"))
+        assertFalse(TagWriter.canWrite("ogg"))
+    }
+
+    @Test
+    fun downloadStatus_isActive() {
+        assertTrue(DownloadStatus.PENDING.isActive)
+        assertTrue(DownloadStatus.DOWNLOADING.isActive)
+        assertTrue(DownloadStatus.VERIFYING.isActive)
+        assertTrue(DownloadStatus.EXTRACTING_METADATA.isActive)
+        assertTrue(DownloadStatus.REGISTERING_LIBRARY.isActive)
+
+        assertFalse(DownloadStatus.COMPLETED.isActive)
+        assertFalse(DownloadStatus.FAILED.isActive)
+        assertFalse(DownloadStatus.CANCELLED.isActive)
+        assertFalse(DownloadStatus.PAUSED.isActive)
+    }
+
+    @Test
+    fun librarySection_isGrouped() {
+        assertTrue(LibrarySection.ALBUMS.isGrouped)
+        assertTrue(LibrarySection.ARTISTS.isGrouped)
+        assertTrue(LibrarySection.GENRES.isGrouped)
+
+        assertFalse(LibrarySection.SONGS.isGrouped)
+        assertFalse(LibrarySection.FAVORITES.isGrouped)
+        assertFalse(LibrarySection.RECENTLY_ADDED.isGrouped)
+        assertFalse(LibrarySection.RECENTLY_PLAYED.isGrouped)
+        assertFalse(LibrarySection.DOWNLOADED.isGrouped)
+    }
+
+    @Test
+    fun libraryQuery_groupKey() {
+        val track = mockTrack("1", "Title", "MyArtist", "MyAlbum", "MyGenre")
+        assertEquals("MyArtist", LibraryQuery.groupKey(track, LibrarySection.ARTISTS))
+        assertEquals("MyAlbum", LibraryQuery.groupKey(track, LibrarySection.ALBUMS))
+        assertEquals("MyGenre", LibraryQuery.groupKey(track, LibrarySection.GENRES))
+
+        val emptyTrack = mockTrack("2", "Title", "MyArtist", "", "")
+        assertEquals(LibraryQuery.NO_ALBUM, LibraryQuery.groupKey(emptyTrack, LibrarySection.ALBUMS))
+        assertEquals(LibraryQuery.NO_GENRE, LibraryQuery.groupKey(emptyTrack, LibrarySection.GENRES))
     }
 }
