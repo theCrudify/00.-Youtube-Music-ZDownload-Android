@@ -1,6 +1,13 @@
 package com.thecrudify.zdownload.ui.screens.home
 
 import android.os.Build
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.remember
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -68,8 +75,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -137,16 +142,14 @@ fun HomeScreen(viewModel: MainViewModel, libraryVm: LibraryViewModel, onOpenSett
                 ) {
                     if (showGreeting) item { Greeting() }
                     item {
-                        GlassCard {
-                            LinkField(
-                                url = url,
-                                canSubmit = url.isNotBlank() && (state is DownloadState.Idle || state is DownloadState.Error),
-                                onUrlChanged = viewModel::onUrlChanged,
-                                onPaste = viewModel::pasteFromClipboard,
-                                onClear = viewModel::clearUrl,
-                                onAnalyze = viewModel::analyzeUrl
-                            )
-                        }
+                        LinkField(
+                            url = url,
+                            canSubmit = url.isNotBlank() && (state is DownloadState.Idle || state is DownloadState.Error),
+                            onUrlChanged = viewModel::onUrlChanged,
+                            onPaste = viewModel::pasteFromClipboard,
+                            onClear = viewModel::clearUrl,
+                            onAnalyze = viewModel::analyzeUrl
+                        )
                     }
                     item {
                         StateContent(
@@ -243,17 +246,6 @@ private fun HeroBackdrop(model: String?) {
     }
 }
 
-/** Frosted panel: translucent surface + hairline border, so the blurred cover shows through. */
-@Composable
-private fun GlassCard(content: @Composable () -> Unit) {
-    Surface(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f),
-        shape = MaterialTheme.shapes.extraLarge,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
-    ) { Box(Modifier.padding(vertical = 8.dp)) { content() } }
-}
-
 @Composable
 private fun LinkField(
     url: String,
@@ -263,28 +255,49 @@ private fun LinkField(
     onClear: () -> Unit,
     onAnalyze: () -> Unit
 ) {
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(
-            value = url,
-            onValueChange = onUrlChanged,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(tr("Link YouTube atau YouTube Music", "YouTube or YouTube Music link")) },
-            leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
-            trailingIcon = {
-                if (url.isEmpty()) {
-                    IconButton(onClick = onPaste) { Icon(Icons.Default.ContentPaste, tr("Tempel", "Paste")) }
-                } else {
-                    IconButton(onClick = onClear) { Icon(Icons.Default.Close, tr("Hapus link", "Clear link")) }
-                }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { if (canSubmit) onAnalyze() }),
-            // The glass card is the visual container; the border only appears while typing.
-            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color.Transparent)
-        )
+    val focus = remember { MutableInteractionSource() }
+    val focused by focus.collectIsFocusedAsState()
+    val scheme = MaterialTheme.colorScheme
+    val outline by animateColorAsState(if (focused) scheme.primary else scheme.onSurface.copy(alpha = 0.12f), label = "linkOutline")
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // One frosted pill: no inner field box; focus only recolors the pill's outline.
+        Surface(
+            shape = CircleShape,
+            color = scheme.surfaceContainerHigh.copy(alpha = 0.7f),
+            border = BorderStroke(if (focused) 2.dp else 1.dp, outline),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TextField(
+                value = url,
+                onValueChange = onUrlChanged,
+                modifier = Modifier.fillMaxWidth(),
+                interactionSource = focus,
+                placeholder = { Text(tr("Link YouTube atau YouTube Music", "YouTube or YouTube Music link"), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingIcon = { Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.padding(start = 8.dp)) },
+                trailingIcon = {
+                    Box(Modifier.padding(end = 4.dp)) {
+                        if (url.isEmpty()) {
+                            IconButton(onClick = onPaste) { Icon(Icons.Default.ContentPaste, tr("Tempel", "Paste")) }
+                        } else {
+                            IconButton(onClick = onClear) { Icon(Icons.Default.Close, tr("Hapus link", "Clear link")) }
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                keyboardActions = KeyboardActions(onGo = { if (canSubmit) onAnalyze() }),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
+            )
+        }
         if (canSubmit) {
-            Button(onClick = onAnalyze, modifier = Modifier.fillMaxWidth()) { Text(tr("Cari lagu", "Find track")) }
+            Button(onClick = onAnalyze, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text(tr("Cari lagu", "Find track"), style = MaterialTheme.typography.titleMedium) }
         }
     }
 }
