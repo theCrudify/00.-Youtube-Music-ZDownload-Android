@@ -64,3 +64,7 @@ val LightFallbackScheme = lightColorScheme(
     surfaceContainerHigh = Color(0xFFF7E4DF),
     surfaceContainerHighest = Color(0xFFF1DFDA),
 )
+
+// Mascot brand blues; used only for the home hero glow so it matches the character art in res/drawable/mascot.xml.
+val MascotBlue = Color(0xFF2563EB)
+val MascotSky = Color(0xFF60A5FA)

@@ -1,30 +1,41 @@
 package com.thecrudify.zdownload.ui.screens.home
 
 import android.os.Build
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import com.thecrudify.zdownload.ui.theme.MascotBlue
+import com.thecrudify.zdownload.ui.theme.MascotSky
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
-import com.thecrudify.zdownload.data.db.Track
-import com.thecrudify.zdownload.ui.components.Artwork
-import java.io.File
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -51,8 +62,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -99,79 +108,103 @@ fun HomeScreen(viewModel: MainViewModel, libraryVm: LibraryViewModel, onOpenSett
     val selectedFormat by viewModel.selectedFormat.collectAsState()
     val state by viewModel.downloadState.collectAsState()
     val downloads by libraryVm.downloads.collectAsState()
-    val allTracks by libraryVm.allTracks.collectAsState()
-    val recent = remember(allTracks) { allTracks.sortedByDescending { it.entity.dateAdded }.take(12) }
-    // The backdrop follows the music: the track being analyzed, else the newest song in the library.
-    val backdrop: Any? = (state as? DownloadState.TrackLoaded)?.trackInfo?.thumbnailUrl
-        ?: (state as? DownloadState.Downloading)?.trackInfo?.thumbnailUrl
-        ?: (state as? DownloadState.Success)?.trackInfo?.thumbnailUrl
-        ?: recent.firstOrNull()?.entity?.artworkPath?.let(::File)
+    // Before a track is picked the screen greets; afterwards the track takes the space.
+    val showGreeting = state is DownloadState.Idle || state is DownloadState.FetchingInfo || state is DownloadState.Error
+    val backdrop: String? = when (val st = state) {
+        is DownloadState.TrackLoaded -> st.trackInfo.thumbnailUrl
+        is DownloadState.Downloading -> st.trackInfo.thumbnailUrl
+        is DownloadState.Success -> st.trackInfo.thumbnailUrl
+        else -> null
+    }
 
     Box(Modifier.fillMaxSize()) {
         HeroBackdrop(backdrop)
         Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(stringResource(R.string.app_name)) },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            actions = {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.nav_settings))
-                }
-            }
-        )
-        // Content width capped on tablets so rows stay readable.
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            LazyColumn(
-                modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                item {
-                    Text(
-                        greeting(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp).semantics { heading() }
-                    )
-                }
-                item {
-                    GlassCard {
-                        LinkField(
-                            url = url,
-                            canSubmit = url.isNotBlank() && (state is DownloadState.Idle || state is DownloadState.Error),
-                            onUrlChanged = viewModel::onUrlChanged,
-                            onPaste = viewModel::pasteFromClipboard,
-                            onClear = viewModel::clearUrl,
-                            onAnalyze = viewModel::analyzeUrl
-                        )
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.nav_settings))
                     }
                 }
-                item {
-                    StateContent(
-                        state = state,
-                        selectedFormat = selectedFormat,
-                        onFormatSelected = viewModel::selectFormat,
-                        onDownload = viewModel::startDownload,
-                        onPlay = libraryVm::playDownloaded
-                    )
-                }
-                if (recent.isNotEmpty()) {
-                    item { RecentRow(recent, onPlay = { libraryVm.play(recent, it, shuffle = false) }) }
-                } else if (state is DownloadState.Idle) {
-                    item { FirstRun() }
-                }
-                if (downloads.isEmpty()) {
-                    if (state is DownloadState.Idle && recent.isNotEmpty()) item { ShareHint() }
-                } else {
+            )
+            // Content width capped on tablets so rows stay readable.
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                LazyColumn(
+                    modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    if (showGreeting) item { Greeting() }
                     item {
-                        QueueHeader(
-                            canClear = downloads.any { !it.download.statusEnum.isActive && it.download.statusEnum != DownloadStatus.PAUSED },
-                            onClear = libraryVm::clearFinishedDownloads
+                        GlassCard {
+                            LinkField(
+                                url = url,
+                                canSubmit = url.isNotBlank() && (state is DownloadState.Idle || state is DownloadState.Error),
+                                onUrlChanged = viewModel::onUrlChanged,
+                                onPaste = viewModel::pasteFromClipboard,
+                                onClear = viewModel::clearUrl,
+                                onAnalyze = viewModel::analyzeUrl
+                            )
+                        }
+                    }
+                    item {
+                        StateContent(
+                            state = state,
+                            selectedFormat = selectedFormat,
+                            onFormatSelected = viewModel::selectFormat,
+                            onDownload = viewModel::startDownload,
+                            onPlay = libraryVm::playDownloaded
                         )
                     }
-                    items(downloads, key = { it.download.id }) { DownloadRow(it, libraryVm) }
+                    if (downloads.isEmpty()) {
+                        if (state is DownloadState.Idle) item { ShareHint() }
+                    } else {
+                        item {
+                            QueueHeader(
+                                canClear = downloads.any { !it.download.statusEnum.isActive && it.download.statusEnum != DownloadStatus.PAUSED },
+                                onClear = libraryVm::clearFinishedDownloads
+                            )
+                        }
+                        items(downloads, key = { it.download.id }) { DownloadRow(it, libraryVm) }
+                    }
                 }
             }
         }
-        }
+    }
+}
+
+/** Mascot + time-of-day greeting; the mascot bobs gently (the system animation scale turns this off). */
+@Composable
+private fun Greeting() {
+    val bob by rememberInfiniteTransition(label = "mascot").animateFloat(
+        initialValue = 0f,
+        targetValue = -8f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bob"
+    )
+    Column(
+        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Image(
+            painterResource(R.drawable.mascot),
+            contentDescription = null,
+            modifier = Modifier.size(168.dp).graphicsLayer { translationY = bob.dp.toPx() }
+        )
+        Text(
+            "${greeting()} 👋",
+            style = MaterialTheme.typography.headlineMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 16.dp).semantics { heading() }
+        )
+        Text(
+            tr("Mau dengerin lagu apa hari ini?", "What are you listening to today?"),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp)
+        )
     }
 }
 
@@ -183,12 +216,10 @@ private fun greeting(): String = when (java.util.Calendar.getInstance().get(java
     else -> tr("Selamat malam", "Good night")
 }
 
-/** Blurred cover behind the top of the screen, fading into the surface; theme-colored glows when there is no cover. */
+/** Blurred cover behind the top of the screen, fading into the surface; blue glows (the mascot's colors) when there is none. */
 @Composable
-private fun HeroBackdrop(model: Any?) {
+private fun HeroBackdrop(model: String?) {
     val surface = MaterialTheme.colorScheme.surface
-    val primary = MaterialTheme.colorScheme.primary
-    val tertiary = MaterialTheme.colorScheme.tertiary
     Box(Modifier.fillMaxWidth().height(420.dp)) {
         if (model != null) {
             // Modifier.blur only renders on Android 12+; below that the heavier scrim keeps text readable.
@@ -204,8 +235,8 @@ private fun HeroBackdrop(model: Any?) {
             }
         } else {
             Canvas(Modifier.fillMaxSize()) {
-                drawCircle(Brush.radialGradient(listOf(primary.copy(alpha = 0.28f), Color.Transparent), center = Offset(size.width * 0.15f, size.height * 0.1f), radius = size.width * 0.8f))
-                drawCircle(Brush.radialGradient(listOf(tertiary.copy(alpha = 0.2f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.35f), radius = size.width * 0.7f))
+                drawRect(Brush.radialGradient(listOf(MascotBlue.copy(alpha = 0.30f), Color.Transparent), center = Offset(size.width * 0.15f, size.height * 0.1f), radius = size.width * 0.8f))
+                drawRect(Brush.radialGradient(listOf(MascotSky.copy(alpha = 0.24f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.35f), radius = size.width * 0.7f))
             }
         }
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(surface.copy(alpha = 0.2f), surface.copy(alpha = 0.6f), surface))))
@@ -221,63 +252,6 @@ private fun GlassCard(content: @Composable () -> Unit) {
         shape = MaterialTheme.shapes.extraLarge,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
     ) { Box(Modifier.padding(vertical = 8.dp)) { content() } }
-}
-
-@Composable
-private fun RecentRow(tracks: List<Track>, onPlay: (Int) -> Unit) {
-    Column(Modifier.padding(top = 24.dp)) {
-        Text(
-            tr("Baru ditambahkan", "Recently added"),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() }
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
-                Column(
-                    Modifier.width(140.dp).clip(MaterialTheme.shapes.medium).clickable(onClickLabel = tr("Putar", "Play")) { onPlay(index) }
-                ) {
-                    Artwork(track.entity.artworkPath, Modifier.size(140.dp), shape = MaterialTheme.shapes.medium)
-                    Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                    Text(track.artistName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
-    }
-}
-
-/** First launch, empty library: a vinyl drawn in theme colors instead of a blank screen. */
-@Composable
-private fun FirstRun() {
-    val groove = MaterialTheme.colorScheme.onSurface
-    val label = MaterialTheme.colorScheme.primary
-    val disc = MaterialTheme.colorScheme.surfaceContainerHighest
-    Column(Modifier.fillMaxWidth().padding(top = 40.dp, start = 32.dp, end = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Canvas(Modifier.size(180.dp)) {
-            val r = size.minDimension / 2
-            drawCircle(disc, r)
-            for (i in 1..6) drawCircle(groove.copy(alpha = 0.07f), r * (0.45f + i * 0.085f), style = Stroke(1.dp.toPx()))
-            drawCircle(label, r * 0.32f)
-            drawCircle(disc, r * 0.05f)
-        }
-        Text(
-            tr("Koleksimu masih kosong", "Your collection is empty"),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(top = 24.dp)
-        )
-        Text(
-            tr(
-                "Tempel link di atas, atau tekan Bagikan di aplikasi YouTube / YouTube Music lalu pilih ZDownload.",
-                "Paste a link above, or tap Share in YouTube / YouTube Music and pick ZDownload."
-            ),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp)
-        )
-    }
 }
 
 @Composable
@@ -323,100 +297,152 @@ private fun StateContent(
     onDownload: (TrackInfo) -> Unit,
     onPlay: (String) -> Unit
 ) {
-    val pad = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    val pad = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
     when (state) {
         is DownloadState.Idle -> Unit
-        is DownloadState.FetchingInfo -> Column(pad, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
+        is DownloadState.FetchingInfo -> Row(
+            pad.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
             Text(
                 tr("Mengambil info lagu…", "Fetching track info…"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        is DownloadState.Error -> Surface(pad, color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.medium) {
+        is DownloadState.Error -> Surface(pad, color = MaterialTheme.colorScheme.errorContainer, shape = MaterialTheme.shapes.large) {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
                 Text(state.message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
-        is DownloadState.TrackLoaded -> TrackCard(state.trackInfo, pad) {
+        is DownloadState.TrackLoaded -> TrackHero(state.trackInfo, pad) {
             FormatPicker(selectedFormat, onFormatSelected)
-            DownloadButton { onDownload(state.trackInfo) }
+            Button(onClick = { onDownload(state.trackInfo) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Icon(Icons.Default.Download, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(tr("Unduh ${selectedFormat.title}", "Download ${selectedFormat.title}"), style = MaterialTheme.typography.titleMedium)
+            }
         }
-        is DownloadState.Downloading -> TrackCard(state.trackInfo, pad) {
-            LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-            Text(state.statusMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        is DownloadState.Success -> TrackCard(state.trackInfo, pad) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Column(Modifier.weight(1f)) {
-                    Text(tr("Tersimpan di library", "Saved to library"), style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        state.fileName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+        is DownloadState.Downloading -> {
+            val progress by animateFloatAsState(state.progress, label = "progress")
+            TrackHero(state.trackInfo, pad, overlay = {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.size(84.dp),
+                        color = Color.White,
+                        trackColor = Color.White.copy(alpha = 0.25f),
+                        strokeWidth = 6.dp
                     )
+                    Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge, color = Color.White)
                 }
-                state.trackId?.let { id ->
-                    FilledTonalButton(onClick = { onPlay(id) }) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(tr("Putar", "Play"))
-                    }
+            }) {
+                Text(state.statusMessage, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        is DownloadState.Success -> TrackHero(state.trackInfo, pad, overlay = {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(72.dp))
+            }
+        }) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(tr("Tersimpan di library", "Saved to library"), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+                Text(state.fileName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            state.trackId?.let { id ->
+                Button(onClick = { onPlay(id) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(tr("Putar sekarang", "Play now"), style = MaterialTheme.typography.titleMedium)
                 }
             }
             // Picking another format here downloads a second copy in that format.
             FormatPicker(selectedFormat, onFormatSelected)
-            DownloadButton { onDownload(state.trackInfo) }
+            OutlinedButton(onClick = { onDownload(state.trackInfo) }, modifier = Modifier.fillMaxWidth()) {
+                Text(tr("Unduh juga sebagai ${selectedFormat.title}", "Also download as ${selectedFormat.title}"))
+            }
         }
     }
 }
 
+/** Glass card led by the video thumbnail at full width, with an optional overlay for progress/done. */
 @Composable
-private fun TrackCard(info: TrackInfo, modifier: Modifier, content: @Composable () -> Unit) {
-    Surface(modifier, color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large) {
+private fun TrackHero(
+    info: TrackInfo,
+    modifier: Modifier,
+    overlay: @Composable BoxScope.() -> Unit = {},
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Surface(
+        modifier,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f),
+        shape = MaterialTheme.shapes.extraLarge,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(MaterialTheme.shapes.large)) {
                 AsyncImage(
                     model = info.thumbnailUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(72.dp).clip(MaterialTheme.shapes.small)
+                    modifier = Modifier.fillMaxSize()
                 )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(info.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        "${info.uploader} · ${info.formattedDuration}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                // Photo overlay: fixed black/white reads on any thumbnail, regardless of theme.
+                Surface(
+                    Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                    color = Color.Black.copy(alpha = 0.6f),
+                    contentColor = Color.White,
+                    shape = MaterialTheme.shapes.small
+                ) {
+                    Text(info.formattedDuration, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                 }
+                overlay()
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(info.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(info.uploader, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             content()
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Formats as a 2-column grid of selectable tiles: name, quality badge, and a check on the chosen one. */
 @Composable
 private fun FormatPicker(selected: AudioFormat, onSelect: (AudioFormat) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AudioFormat.entries.forEach { format ->
-                FilterChip(selected = format == selected, onClick = { onSelect(format) }, label = { Text(format.title) })
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(tr("Pilih format", "Choose format"), style = MaterialTheme.typography.titleSmall)
+        AudioFormat.entries.chunked(2).forEach { pair ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                pair.forEach { f -> FormatTile(f, f == selected, { onSelect(f) }, Modifier.weight(1f)) }
             }
         }
-        Text(
-            "${format(selected).first} · ${format(selected).second}",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Text(format(selected).second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun FormatTile(f: AudioFormat, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        selected = isSelected,
+        onClick = onClick,
+        modifier = modifier.semantics { role = Role.RadioButton },
+        shape = MaterialTheme.shapes.large,
+        color = if (isSelected) scheme.primaryContainer else scheme.surfaceContainerHighest.copy(alpha = 0.6f),
+        contentColor = if (isSelected) scheme.onPrimaryContainer else scheme.onSurface,
+        border = if (isSelected) BorderStroke(2.dp, scheme.primary) else null
+    ) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(f.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                Text(format(f).first, style = MaterialTheme.typography.labelMedium, color = LocalContentColor.current.copy(alpha = 0.75f), maxLines = 1)
+            }
+            if (isSelected) Icon(Icons.Default.CheckCircle, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(20.dp))
+        }
     }
 }
 
@@ -429,15 +455,6 @@ private fun format(f: AudioFormat): Pair<String, String> = when (f) {
     AudioFormat.FLAC -> stringResource(R.string.format_flac_badge) to stringResource(R.string.format_flac_desc)
     AudioFormat.WAV -> stringResource(R.string.format_wav_badge) to stringResource(R.string.format_wav_desc)
     AudioFormat.OPUS -> stringResource(R.string.format_opus_badge) to stringResource(R.string.format_opus_desc)
-}
-
-@Composable
-private fun DownloadButton(onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(tr("Unduh", "Download"))
-    }
 }
 
 @Composable
@@ -494,7 +511,15 @@ private fun DownloadRow(item: DownloadItem, vm: LibraryViewModel) {
         else -> ""
     }
     ListItem(
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        leadingContent = {
+            AsyncImage(
+                model = d.artworkUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(56.dp).clip(MaterialTheme.shapes.small)
+            )
+        },
         headlineContent = { Text(d.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

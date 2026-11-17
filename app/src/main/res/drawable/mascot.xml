@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ZDownload mascot: a guy in a blue hoodie with blue headphones. Original artwork, 200x200 grid. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Backdrop disc -->
+    <path
+        android:fillColor="#DBEAFE"
+        android:pathData="M10,100 a90,90 0 1,0 180,0 a90,90 0 1,0 -180,0 Z" />
+
+    <group>
+        <clip-path android:pathData="M10,100 a90,90 0 1,0 180,0 a90,90 0 1,0 -180,0 Z" />
+
+        <!-- Hoodie -->
+        <path
+            android:fillColor="#2563EB"
+            android:pathData="M34,200 C34,158 62,138 100,138 C138,138 166,158 166,200 Z" />
+        <!-- Hood collar -->
+        <path
+            android:fillColor="#1D4ED8"
+            android:pathData="M72,141 C82,160 118,160 128,141 C118,150 82,150 72,141 Z" />
+        <!-- Hoodie strings -->
+        <path
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3"
+            android:strokeLineCap="round"
+            android:pathData="M92,154 L90,176 M108,154 L110,176" />
+    </group>
+
+    <!-- Neck -->
+    <path
+        android:fillColor="#E8B48F"
+        android:pathData="M90,116 L110,116 L110,142 C104,147 96,147 90,142 Z" />
+
+    <!-- Head -->
+    <path
+        android:fillColor="#F5C9A8"
+        android:pathData="M68,92 a32,32 0 1,0 64,0 a32,32 0 1,0 -64,0 Z" />
+
+    <!-- Hair -->
+    <path
+        android:fillColor="#1F2433"
+        android:pathData="M66,92 C60,60 84,48 102,50 C126,50 142,66 134,94 C130,80 124,72 114,70 C106,80 90,82 76,76 C71,80 68,86 66,92 Z" />
+
+    <!-- Brows -->
+    <path
+        android:strokeColor="#1F2433"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M84,87 L95,85 M105,85 L116,87" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#1F2433"
+        android:pathData="M86,97 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z M106,97 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
+
+    <!-- Blush -->
+    <path
+        android:fillColor="#F28B82"
+        android:fillAlpha="0.45"
+        android:pathData="M77,106 a5,4 0 1,0 10,0 a5,4 0 1,0 -10,0 Z M113,106 a5,4 0 1,0 10,0 a5,4 0 1,0 -10,0 Z" />
+
+    <!-- Smile -->
+    <path
+        android:strokeColor="#1F2433"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M90,108 Q100,118 110,108" />
+
+    <!-- Headphone band -->
+    <path
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:pathData="M64,96 C58,50 142,50 136,96" />
+
+    <!-- Ear cups -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M60,84 h8 a4,4 0 0 1 4,4 v20 a4,4 0 0 1 -4,4 h-8 a4,4 0 0 1 -4,-4 v-20 a4,4 0 0 1 4,-4 Z M132,84 h8 a4,4 0 0 1 4,4 v20 a4,4 0 0 1 -4,4 h-8 a4,4 0 0 1 -4,-4 v-20 a4,4 0 0 1 4,-4 Z" />
+
+    <!-- Floating music note -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M150,34 L166,30 L166,37 L155,40 L155,60 a7,6 0 1,1 -5,-5.6 Z" />
+    <path
+        android:fillColor="#93C5FD"
+        android:pathData="M36,48 L46,46 L46,51 L40,52 L40,64 a5,4 0 1,1 -4,-3.8 Z" />
+</vector>
