@@ -23,17 +23,22 @@ class LocalizedActivityContext(
 }
 
 object LocaleHelper {
+    // The device language, untouched by our own Locale.setDefault calls (which made "follow system" stick to the last pick).
+    private fun systemLocale(): Locale =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) android.content.res.Resources.getSystem().configuration.locales[0]
+        else @Suppress("DEPRECATION") android.content.res.Resources.getSystem().configuration.locale
+
     fun getLocale(languageCode: String): Locale {
         return when (languageCode.trim().lowercase()) {
             "id", "in" -> Locale("in", "ID")
             "en" -> Locale.ENGLISH
-            else -> Locale.getDefault()
+            else -> systemLocale()
         }
     }
 
     fun applyLocale(activity: ComponentActivity, languageCode: String): Context {
         val targetLocale = if (languageCode.isBlank() || languageCode.equals("system", ignoreCase = true)) {
-            Locale.getDefault()
+            systemLocale()
         } else {
             getLocale(languageCode)
         }
@@ -55,7 +60,7 @@ object LocaleHelper {
             "id", "in" -> AppLanguage.ID
             "en" -> AppLanguage.EN
             else -> {
-                val sysLang = Locale.getDefault().language.lowercase()
+                val sysLang = systemLocale().language.lowercase()
                 if (sysLang == "id" || sysLang == "in") AppLanguage.ID else AppLanguage.EN
             }
         }

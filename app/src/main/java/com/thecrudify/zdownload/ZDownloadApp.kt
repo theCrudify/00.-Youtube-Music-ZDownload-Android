@@ -6,6 +6,8 @@ import com.thecrudify.zdownload.data.db.AppDatabase
 import com.thecrudify.zdownload.data.download.DownloadManager
 import com.thecrudify.zdownload.data.download.DownloadService
 import com.thecrudify.zdownload.data.prefs.AppPreferences
+import com.thecrudify.zdownload.ui.AppText
+import com.thecrudify.zdownload.ui.LocaleHelper
 import com.thecrudify.zdownload.data.repository.LibraryRepository
 import com.thecrudify.zdownload.data.repository.YoutubeDownloaderRepository
 import com.thecrudify.zdownload.data.storage.MusicStorage
@@ -13,6 +15,7 @@ import com.thecrudify.zdownload.playback.PlaybackController
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,6 +43,10 @@ class ZDownloadApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // Keeps text built outside Compose (messages, notifications) in the chosen language.
+        mainScope.launch {
+            prefs.language.collect { AppText.lang = LocaleHelper.toAppLanguage(it) }
+        }
         enginesReady = appScope.async {
             YoutubeDL.getInstance().init(this@ZDownloadApp)
             FFmpeg.getInstance().init(this@ZDownloadApp)

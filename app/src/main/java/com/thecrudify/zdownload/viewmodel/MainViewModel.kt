@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.viewmodel
 
+import com.thecrudify.zdownload.ui.t
 import android.app.Application
 import android.content.ClipboardManager
 import android.content.Context
@@ -85,16 +86,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun analyzeUrl() {
         val currentUrl = _url.value.trim()
         if (currentUrl.isEmpty()) {
-            _downloadState.value = DownloadState.Error("Masukkan link YouTube atau YouTube Music terlebih dahulu.")
+            _downloadState.value = DownloadState.Error(t("Masukkan link YouTube atau YouTube Music terlebih dahulu.", "Enter a YouTube or YouTube Music link first."))
             return
         }
         watchJob?.cancel()
         analyzeJob?.cancel()
         analyzeJob = viewModelScope.launch {
-            _downloadState.value = DownloadState.FetchingInfo("Mengambil informasi lagu dari YouTube...")
+            _downloadState.value = DownloadState.FetchingInfo(t("Mengambil informasi lagu dari YouTube...", "Fetching track info from YouTube..."))
             app.engine.fetchTrackInfo(currentUrl)
                 .onSuccess { _downloadState.value = DownloadState.TrackLoaded(it) }
-                .onFailure { _downloadState.value = DownloadState.Error("Gagal mengambil info: ${it.localizedMessage ?: "Terjadi kesalahan"}") }
+                .onFailure { _downloadState.value = DownloadState.Error(t("Gagal mengambil info: ", "Couldn't fetch info: ") + (it.localizedMessage ?: t("Terjadi kesalahan", "Something went wrong"))) }
         }
     }
 
@@ -126,17 +127,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             _downloadState.value = when (download.statusEnum) {
                 DownloadStatus.COMPLETED -> download.trackId?.let { app.library.getTrack(it) }?.let { success(info, it) }
-                    ?: DownloadState.Error("Lagu selesai diunduh tetapi tidak ditemukan di library.")
-                DownloadStatus.FAILED -> DownloadState.Error("Gagal mengunduh: ${download.error ?: "Terjadi kesalahan"}")
+                    ?: DownloadState.Error(t("Lagu selesai diunduh tetapi tidak ditemukan di library.", "The song finished downloading but isn't in the library."))
+                DownloadStatus.FAILED -> DownloadState.Error(t("Gagal mengunduh: ", "Download failed: ") + (download.error ?: t("Terjadi kesalahan", "Something went wrong")))
                 DownloadStatus.CANCELLED, DownloadStatus.PAUSED -> DownloadState.TrackLoaded(info)
-                DownloadStatus.PENDING -> DownloadState.Downloading(info, 0f, "Menunggu giliran di antrean...")
+                DownloadStatus.PENDING -> DownloadState.Downloading(info, 0f, t("Menunggu giliran di antrean...", "Waiting in queue..."))
                 DownloadStatus.DOWNLOADING -> DownloadState.Downloading(
                     info, progress?.fraction ?: 0f,
-                    progress?.speed?.let { "Mengunduh • $it" } ?: "Menyiapkan unduhan..."
+                    progress?.speed?.let { t("Mengunduh • $it", "Downloading • $it") } ?: t("Menyiapkan unduhan...", "Preparing download...")
                 )
-                DownloadStatus.VERIFYING -> DownloadState.Downloading(info, 1f, "Memeriksa file...")
-                DownloadStatus.EXTRACTING_METADATA -> DownloadState.Downloading(info, 1f, "Membaca metadata...")
-                DownloadStatus.REGISTERING_LIBRARY -> DownloadState.Downloading(info, 1f, "Menyimpan ke library...")
+                DownloadStatus.VERIFYING -> DownloadState.Downloading(info, 1f, t("Memeriksa file...", "Verifying file..."))
+                DownloadStatus.EXTRACTING_METADATA -> DownloadState.Downloading(info, 1f, t("Membaca metadata...", "Reading metadata..."))
+                DownloadStatus.REGISTERING_LIBRARY -> DownloadState.Downloading(info, 1f, t("Menyimpan ke library...", "Saving to library..."))
             }
         }
     }

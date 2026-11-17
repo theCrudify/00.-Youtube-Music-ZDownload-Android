@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.metadata
 
+import com.thecrudify.zdownload.ui.t
 import android.media.MediaMetadataRetriever
 import android.os.Build
 import java.io.File
@@ -32,13 +33,13 @@ object MetadataReader {
 
     /** @throws UnreadableAudioException if the file is corrupt, empty or not audio the device can decode. */
     fun read(file: File): AudioMetadata {
-        if (!file.isFile || file.length() == 0L) throw UnreadableAudioException("File kosong atau tidak ditemukan")
+        if (!file.isFile || file.length() == 0L) throw UnreadableAudioException(t("File kosong atau tidak ditemukan", "File is empty or missing"))
         val mmr = MediaMetadataRetriever()
         try {
             try {
                 mmr.setDataSource(file.absolutePath)
             } catch (e: RuntimeException) {
-                throw UnreadableAudioException("File audio rusak atau formatnya tidak didukung")
+                throw UnreadableAudioException(t("File audio rusak atau formatnya tidak didukung", "Audio file is damaged or its format isn't supported"))
             }
             fun text(key: Int) = mmr.extractMetadata(key)?.trim()?.takeIf { it.isNotEmpty() }
             // "3/12" and "2019-05-01" style values: keep the leading number
@@ -46,7 +47,7 @@ object MetadataReader {
 
             val duration = text(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
             val hasAudio = text(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) != null
-            if (duration <= 0L || !hasAudio) throw UnreadableAudioException("File audio rusak atau formatnya tidak didukung")
+            if (duration <= 0L || !hasAudio) throw UnreadableAudioException(t("File audio rusak atau formatnya tidak didukung", "Audio file is damaged or its format isn't supported"))
 
             val lyrics = runCatching {
                 val lrcFile = File(file.parentFile, "${file.nameWithoutExtension}.lrc")

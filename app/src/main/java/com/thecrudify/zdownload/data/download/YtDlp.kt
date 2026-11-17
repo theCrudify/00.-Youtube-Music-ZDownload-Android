@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.download
 
+import com.thecrudify.zdownload.ui.t
 import java.net.URI
 
 /** Pure helpers around yt-dlp's text output, kept free of Android classes so they are unit-testable. */
@@ -22,7 +23,7 @@ object YtDlp {
 
     /** yt-dlp failures arrive as a wall of warnings; show the ERROR lines, or the tail if there are none. */
     fun summarizeError(message: String?): String {
-        if (message.isNullOrBlank()) return "Terjadi kesalahan"
+        if (message.isNullOrBlank()) return t("Terjadi kesalahan", "Something went wrong")
         val errors = message.lines().map { it.trim() }.filter { it.startsWith("ERROR") }
         val text = if (errors.isNotEmpty()) errors.joinToString("\n") else message.trim().lines().takeLast(3).joinToString("\n")
         return text.take(400)

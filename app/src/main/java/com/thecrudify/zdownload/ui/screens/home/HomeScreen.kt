@@ -536,7 +536,8 @@ private fun DownloadRow(item: DownloadItem, vm: LibraryViewModel) {
         headlineContent = { Text(d.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("${d.artist} · ${d.format}", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Format only matters while choosing/downloading; a finished song is just a song.
+                Text(if (status == DownloadStatus.COMPLETED) d.artist else "${d.artist} · ${d.format}", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (status.isActive) {
                     // No measured progress for this stage: show activity, not a made-up percentage.
                     if (status == DownloadStatus.DOWNLOADING && progress != null) {

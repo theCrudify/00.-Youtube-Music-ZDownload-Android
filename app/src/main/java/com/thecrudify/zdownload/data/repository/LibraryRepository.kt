@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.repository
 
+import com.thecrudify.zdownload.ui.t
 import android.content.Context
 import android.media.MediaScannerConnection
 import android.net.Uri
@@ -154,15 +155,15 @@ class LibraryRepository(
                 val extension = name.substringAfterLast('.', "").lowercase().ifEmpty {
                     MimeTypeMap.getSingleton().getExtensionFromMimeType(mime).orEmpty()
                 }
-                if (extension !in IMPORT_EXTENSIONS) throw IOException("format .$extension tidak didukung")
-                if (size == 0L) throw IOException("file kosong")
-                if (size > MAX_IMPORT_BYTES) throw IOException("file terlalu besar")
-                if (size > 0 && size + MIN_FREE_BYTES > storage.freeBytes()) throw IOException("penyimpanan tidak cukup")
+                if (extension !in IMPORT_EXTENSIONS) throw IOException(t("format .$extension tidak didukung", ".$extension isn't supported"))
+                if (size == 0L) throw IOException(t("file kosong", "empty file"))
+                if (size > MAX_IMPORT_BYTES) throw IOException(t("file terlalu besar", "file too large"))
+                if (size > 0 && size + MIN_FREE_BYTES > storage.freeBytes()) throw IOException(t("penyimpanan tidak cukup", "not enough storage"))
 
                 temp = File(storage.tempDir, "import-${UUID.randomUUID()}.$extension")
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     temp.outputStream().use { input.copyTo(it) }
-                } ?: throw IOException("file tidak bisa dibuka")
+                } ?: throw IOException(t("file tidak bisa dibuka", "file can't be opened"))
 
                 val meta = MetadataReader.read(temp)
                 val title = clean(meta.title, name.substringBeforeLast('.'))
@@ -171,7 +172,7 @@ class LibraryRepository(
                     it.title.equals(title, true) && it.artistName.equals(artist, true) &&
                             abs(it.entity.durationMs - meta.durationMs) < 1500 && it.entity.fileSize == temp.length()
                 }
-                if (duplicate) throw IOException("sudah ada di library")
+                if (duplicate) throw IOException(t("sudah ada di library", "already in library"))
 
                 val id = UUID.randomUUID().toString()
                 val target = storage.newTrackFile(artist, title, extension)
@@ -246,7 +247,7 @@ class LibraryRepository(
             if (!writeToFile) return@withContext null
             val file = File(track.entity.filePath)
             if (!TagWriter.canWrite(track.entity.format)) {
-                return@withContext "Format .${track.entity.format} tidak mendukung penulisan tag; perubahan disimpan di library aplikasi saja."
+                return@withContext t("Format .${track.entity.format} tidak mendukung penulisan tag; perubahan disimpan di library aplikasi saja.", ".${track.entity.format} files don't support tag writing; changes are saved in the app library only.")
             }
             try {
                 TagWriter.write(
@@ -258,7 +259,7 @@ class LibraryRepository(
                 scan(file)
                 null
             } catch (e: Exception) {
-                "Tag tidak tertulis ke file (${e.message}); perubahan tetap tersimpan di library aplikasi."
+                t("Tag tidak tertulis ke file (${e.message}); perubahan tetap tersimpan di library aplikasi.", "Tags weren't written to the file (${e.message}); changes are still saved in the app library.")
             }
         }
 
@@ -343,9 +344,9 @@ class LibraryRepository(
             runCatching {
                 val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension) ?: "audio/*"
                 val doc = DocumentsContract.createDocument(context.contentResolver, parent, mime, file.name)
-                    ?: throw IOException("tidak bisa membuat file")
+                    ?: throw IOException(t("tidak bisa membuat file", "can't create file"))
                 context.contentResolver.openOutputStream(doc)?.use { out -> file.inputStream().use { it.copyTo(out) } }
-                    ?: throw IOException("tidak bisa menulis file")
+                    ?: throw IOException(t("tidak bisa menulis file", "can't write file"))
                 done++
             }
         }

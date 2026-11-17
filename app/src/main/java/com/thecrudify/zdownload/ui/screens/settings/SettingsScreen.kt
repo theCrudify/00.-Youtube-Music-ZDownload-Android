@@ -139,7 +139,7 @@ fun SettingsScreen(
         }
         LabeledSetting(stringResource(R.string.playback_repeat)) {
             Segments(
-                options = listOf(0 to "Off", 1 to "All", 2 to "One"),
+                options = listOf(0 to tr("Mati", "Off"), 1 to tr("Semua", "All"), 2 to tr("Satu", "One")),
                 isSelected = { it == defaultRepeat },
                 onSelect = { libraryVm.setDefaultRepeat(it) }
             )

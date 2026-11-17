@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.download
 
+import com.thecrudify.zdownload.ui.t
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -84,14 +85,14 @@ class DownloadService : Service() {
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle(if (active.size > 1) "Mengunduh ${active.size} lagu" else "Mengunduh lagu")
-            .setContentText(current?.title ?: "Menyiapkan…")
+            .setContentTitle(if (active.size > 1) t("Mengunduh ${active.size} lagu", "Downloading ${active.size} songs") else t("Mengunduh lagu", "Downloading song"))
+            .setContentText(current?.title ?: t("Menyiapkan…", "Preparing…"))
             .setSubText(progress?.speed)
             .setProgress(100, ((progress?.fraction ?: 0f) * 100).toInt(), progress == null)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(open)
-            .addAction(0, "Batalkan semua", cancelAll)
+            .addAction(0, t("Batalkan semua", "Cancel all"), cancelAll)
             .build()
     }
 

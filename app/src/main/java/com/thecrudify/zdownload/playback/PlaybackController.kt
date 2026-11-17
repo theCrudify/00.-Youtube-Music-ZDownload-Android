@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.playback
 
+import com.thecrudify.zdownload.ui.t
 import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
@@ -116,10 +117,10 @@ class PlaybackController(
         override fun onPlayerError(error: PlaybackException) {
             val c = controller ?: return
             val failed = c.currentMediaItem
-            val title = failed?.mediaMetadata?.title ?: "Lagu"
+            val title = failed?.mediaMetadata?.title ?: t("Lagu", "Song")
             val fileGone = failed?.requestMetadata?.mediaUri?.path?.let { !File(it).isFile } == true
             if (fileGone) failed?.mediaId?.let { id -> scope.launch { library.markMissing(id) } }
-            _errors.tryEmit(if (fileGone) "File \"$title\" tidak ditemukan di perangkat" else "\"$title\" tidak bisa diputar")
+            _errors.tryEmit(if (fileGone) t("File \"$title\" tidak ditemukan di perangkat", "File \"$title\" not found on this device") else t("\"$title\" tidak bisa diputar", "\"$title\" can't be played"))
             // Skip the broken item instead of leaving the player stuck on it
             val index = c.currentMediaItemIndex
             if (c.mediaItemCount > 1) {
@@ -212,7 +213,7 @@ class PlaybackController(
     fun play(tracks: List<Track>, startIndex: Int = 0, shuffle: Boolean? = null) = withController { c ->
         val playable = tracks.filter { !it.entity.isMissing }
         if (playable.isEmpty()) {
-            _errors.tryEmit("File lagu tidak ditemukan di perangkat")
+            _errors.tryEmit(t("File lagu tidak ditemukan di perangkat", "Song file not found on this device"))
             return@withController
         }
         val startId = tracks.getOrNull(startIndex)?.id

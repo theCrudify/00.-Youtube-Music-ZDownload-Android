@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.metadata
 
+import com.thecrudify.zdownload.ui.t
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
@@ -33,7 +34,7 @@ object TagWriter {
      * The original is untouched if anything fails.
      */
     fun write(file: File, edit: TagEdit, artwork: File?) {
-        if (!canWrite(file.extension)) throw IOException("Format .${file.extension} tidak bisa ditulis tag-nya")
+        if (!canWrite(file.extension)) throw IOException(t("Format .${file.extension} tidak bisa ditulis tag-nya", "Tags can't be written to .${file.extension} files"))
         val originalDuration = MetadataReader.read(file).durationMs
         // jaudiotagger picks its parser from the extension, so the working copy keeps it
         val work = File(file.parentFile, ".${file.nameWithoutExtension}.tagging.${file.extension}")
@@ -60,13 +61,13 @@ object TagWriter {
 
             val written = MetadataReader.read(work)
             if (abs(written.durationMs - originalDuration) > 1500) {
-                throw IOException("Hasil penulisan tag tidak lolos verifikasi; file asli tidak diubah")
+                throw IOException(t("Hasil penulisan tag tidak lolos verifikasi; file asli tidak diubah", "Tag write failed verification; the original file was not changed"))
             }
-            if (!work.renameTo(file)) throw IOException("Gagal mengganti file asli")
+            if (!work.renameTo(file)) throw IOException(t("Gagal mengganti file asli", "Couldn't replace the original file"))
         } catch (e: IOException) {
             throw e
         } catch (e: Exception) {
-            throw IOException("Gagal menulis tag: ${e.message}", e)
+            throw IOException(t("Gagal menulis tag: ", "Couldn't write tags: ") + e.message, e)
         } finally {
             work.delete()
         }

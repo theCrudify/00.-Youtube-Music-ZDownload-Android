@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.storage
 
+import com.thecrudify.zdownload.ui.t
 import android.content.Context
 import android.os.StatFs
 import java.io.File
@@ -55,8 +56,8 @@ class MusicStorage(private val context: Context) {
         val part = File(target.parentFile, target.name + ".part")
         try {
             source.copyTo(part, overwrite = true)
-            if (part.length() != source.length()) throw IOException("Salinan file tidak lengkap")
-            if (!part.renameTo(target)) throw IOException("Gagal menyimpan ${target.name}")
+            if (part.length() != source.length()) throw IOException(t("Salinan file tidak lengkap", "File copy is incomplete"))
+            if (!part.renameTo(target)) throw IOException(t("Gagal menyimpan ${target.name}", "Couldn't save ${target.name}"))
         } finally {
             part.delete()
         }

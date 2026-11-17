@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.viewmodel
 
+import com.thecrudify.zdownload.ui.t
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
@@ -128,12 +129,12 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     fun playNext(tracks: List<Track>) {
         playback.playNext(tracks)
-        notify("Diputar berikutnya")
+        notify(t("Diputar berikutnya", "Playing next"))
     }
 
     fun addToQueue(tracks: List<Track>) {
         playback.addToQueue(tracks)
-        notify("Ditambahkan ke antrean")
+        notify(t("Ditambahkan ke antrean", "Added to queue"))
     }
 
     fun toggleFavorite(track: Track) = viewModelScope.launch { library.setFavorite(track.id, !track.isFavorite) }
@@ -146,9 +147,9 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     fun saveMetadata(track: Track, edit: TagEdit, artwork: Uri?, writeToFile: Boolean) = viewModelScope.launch {
         val note = runCatching { library.updateMetadata(track, edit, artwork, writeToFile) }
-            .getOrElse { "Gagal menyimpan: ${it.message}" }
+            .getOrElse { t("Gagal menyimpan: ", "Couldn't save: ") + it.message }
         library.getTrack(track.id)?.let(playback::refreshTrack)
-        notify(note ?: if (writeToFile) "Info lagu disimpan, termasuk ke file" else "Info lagu disimpan")
+        notify(note ?: if (writeToFile) t("Info lagu disimpan, termasuk ke file", "Song info saved, including to the file") else t("Info lagu disimpan", "Song info saved"))
     }
 
     fun delete(tracks: List<Track>, deleteFiles: Boolean) = viewModelScope.launch {
@@ -157,21 +158,21 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         clearSelection()
         notify(
             when {
-                failed > 0 -> "${tracks.size} lagu dihapus dari library; $failed file tidak bisa dihapus"
-                deleteFiles -> "${tracks.size} lagu dan filenya dihapus"
-                else -> "${tracks.size} lagu dihapus dari library (file tetap ada)"
+                failed > 0 -> t("${tracks.size} lagu dihapus dari library; $failed file tidak bisa dihapus", "${songs(tracks.size)} removed from library; $failed file(s) couldn't be deleted")
+                deleteFiles -> t("${tracks.size} lagu dan filenya dihapus", "${songs(tracks.size)} and their files deleted")
+                else -> t("${tracks.size} lagu dihapus dari library (file tetap ada)", "${songs(tracks.size)} removed from library (files kept)")
             }
         )
     }
 
     fun importAudio(uris: List<Uri>) = viewModelScope.launch {
         if (uris.isEmpty()) return@launch
-        notify("Mengimpor ${uris.size} file…")
+        notify(t("Mengimpor ${uris.size} file…", "Importing ${uris.size} file(s)…"))
         val result = library.importAudio(uris)
         notify(
             buildString {
-                append("${result.imported} lagu diimpor")
-                if (result.skipped.isNotEmpty()) append("; ${result.skipped.size} dilewati: ${result.skipped.first()}")
+                append(t("${result.imported} lagu diimpor", "${songs(result.imported)} imported"))
+                if (result.skipped.isNotEmpty()) append(t("; ${result.skipped.size} dilewati: ", "; ${result.skipped.size} skipped: ") + result.skipped.first())
             }
         )
         refreshStorage()
@@ -180,7 +181,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun export(tracks: List<Track>, folder: Uri) = viewModelScope.launch {
         val done = library.export(tracks, folder)
         clearSelection()
-        notify("$done dari ${tracks.size} lagu disalin ke folder yang dipilih")
+        notify(t("$done dari ${tracks.size} lagu disalin ke folder yang dipilih", "$done of ${songs(tracks.size)} copied to the chosen folder"))
     }
 
     // ---- Playlists ----------------------------------------------------------------------
@@ -196,14 +197,14 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         if (trackIds.isNotEmpty()) {
             library.addToPlaylist(id, trackIds)
             clearSelection()
-            notify("${trackIds.size} lagu ditambahkan ke \"$name\"")
+            notify(t("${trackIds.size} lagu ditambahkan ke \"$name\"", "${songs(trackIds.size)} added to \"$name\""))
         }
     }
 
     fun addToPlaylist(playlist: PlaylistWithCount, trackIds: List<String>) = viewModelScope.launch {
         val added = library.addToPlaylist(playlist.playlist.id, trackIds)
         clearSelection()
-        notify(if (added == 0) "Sudah ada di \"${playlist.playlist.name}\"" else "$added lagu ditambahkan ke \"${playlist.playlist.name}\"")
+        notify(if (added == 0) t("Sudah ada di \"${playlist.playlist.name}\"", "Already in \"${playlist.playlist.name}\"") else t("$added lagu ditambahkan ke \"${playlist.playlist.name}\"", "${songs(added)} added to \"${playlist.playlist.name}\""))
     }
 
     fun renamePlaylist(id: Long, name: String) = viewModelScope.launch { library.renamePlaylist(id, name) }
@@ -237,7 +238,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun clearFinishedDownloads() = viewModelScope.launch { app.downloads.clearFinished() }
 
     fun playDownloaded(trackId: String) = viewModelScope.launch {
-        library.getTrack(trackId)?.let { playback.play(listOf(it)) } ?: notify("Lagu sudah tidak ada di library")
+        library.getTrack(trackId)?.let { playback.play(listOf(it)) } ?: notify(t("Lagu sudah tidak ada di library", "That song is no longer in the library"))
     }
 
     // ---- Storage ------------------------------------------------------------------------
@@ -250,18 +251,21 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         val result = library.verify()
         refreshStorage()
         notify(
-            if (result.missing == 0) "${result.checked} lagu diperiksa, semua file ada"
-            else "${result.missing} dari ${result.checked} lagu filenya hilang (ditandai, tidak dihapus)"
+            if (result.missing == 0) t("${result.checked} lagu diperiksa, semua file ada", "${songs(result.checked)} checked, all files present")
+            else t("${result.missing} dari ${result.checked} lagu filenya hilang (ditandai, tidak dihapus)", "${result.missing} of ${songs(result.checked)} have missing files (marked, not removed)")
         )
     }
 
     fun clearTemp() = viewModelScope.launch {
         val freed = library.clearTemp(app.downloads.workDirsInUse())
         refreshStorage()
-        notify("File sementara dibersihkan (${freed / 1_048_576} MB)")
+        notify(t("File sementara dibersihkan (${freed / 1_048_576} MB)", "Temporary files cleared (${freed / 1_048_576} MB)"))
     }
 
     private fun notify(message: String) {
         _messages.tryEmit(message)
     }
 }
+
+/** English count noun for notifications: "1 song", "3 songs". */
+private fun songs(n: Int) = if (n == 1) "1 song" else "$n songs"

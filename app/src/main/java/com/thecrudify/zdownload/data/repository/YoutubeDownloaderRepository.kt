@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.repository
 
+import com.thecrudify.zdownload.ui.t
 import android.content.Context
 import com.thecrudify.zdownload.ZDownloadApp
 import com.thecrudify.zdownload.data.download.YtDlp
@@ -40,12 +41,12 @@ class YoutubeDownloaderRepository(private val context: Context) {
     private suspend fun awaitEngines() = try {
         (context.applicationContext as ZDownloadApp).enginesReady.await()
     } catch (e: Error) {
-        throw IllegalStateException("Engine gagal dimuat: ${e.message}", e)
+        throw IllegalStateException(t("Engine gagal dimuat: ", "Engine failed to load: ") + e.message, e)
     }
 
     suspend fun fetchTrackInfo(url: String): Result<TrackInfo> = withContext(Dispatchers.IO) {
         try {
-            require(YtDlp.isSupportedUrl(url)) { "Link harus dari YouTube atau YouTube Music." }
+            require(YtDlp.isSupportedUrl(url)) { t("Link harus dari YouTube atau YouTube Music.", "The link must be from YouTube or YouTube Music.") }
             awaitEngines()
             val request = YoutubeDLRequest(url)
             request.addOption("--dump-json")
@@ -61,7 +62,7 @@ class YoutubeDownloaderRepository(private val context: Context) {
                 thumbnailUrl = info.optString("thumbnail"),
                 originalUrl = url
             )
-            require(track.id.isNotBlank()) { "yt-dlp tidak mengembalikan ID video." }
+            require(track.id.isNotBlank()) { t("yt-dlp tidak mengembalikan ID video.", "yt-dlp returned no video ID.") }
             infoFile(track.id).writeText(json)
             Result.success(track)
         } catch (e: Exception) {
@@ -123,7 +124,7 @@ class YoutubeDownloaderRepository(private val context: Context) {
 
         val files = workDir.listFiles()?.filter { it.isFile }.orEmpty()
         val audio = files.filter { it.extension.lowercase() !in HELPER_EXTENSIONS }.maxByOrNull { it.length() }
-            ?: error("yt-dlp selesai tanpa menghasilkan file audio")
+            ?: error(t("yt-dlp selesai tanpa menghasilkan file audio", "yt-dlp finished without producing an audio file"))
         DownloadedFiles(audio, files.firstOrNull { it.extension.lowercase() in IMAGE_EXTENSIONS })
     }
 

@@ -1,5 +1,6 @@
 package com.thecrudify.zdownload.data.download
 
+import com.thecrudify.zdownload.ui.t
 import android.os.SystemClock
 import com.thecrudify.zdownload.data.db.DownloadEntity
 import com.thecrudify.zdownload.data.db.DownloadStatus
@@ -59,7 +60,7 @@ class DownloadManager(
         scope.launch {
             // Whatever was mid-flight when the process died did not finish. Its .part file is kept, so Retry resumes.
             dao.getActiveDownloads().forEach {
-                setStatus(it, DownloadStatus.FAILED, error = "Terputus saat aplikasi ditutup. Ketuk Ulangi untuk melanjutkan.")
+                setStatus(it, DownloadStatus.FAILED, error = t("Terputus saat aplikasi ditutup. Ketuk Ulangi untuk melanjutkan.", "Interrupted when the app closed. Tap Retry to continue."))
             }
             repeat(MAX_CONCURRENT) { launch { for (id in queue) process(id) } }
         }
@@ -159,7 +160,7 @@ class DownloadManager(
         try {
             val free = storage.freeBytes()
             if (free < LibraryRepository.MIN_FREE_BYTES) {
-                throw IOException("Penyimpanan hampir penuh (sisa ${free / 1_048_576} MB). Kosongkan ruang lalu ulangi.")
+                throw IOException(t("Penyimpanan hampir penuh (sisa ${free / 1_048_576} MB). Kosongkan ruang lalu ulangi.", "Storage almost full (${free / 1_048_576} MB left). Free up space and retry."))
             }
             download = setStatus(download, DownloadStatus.DOWNLOADING)
 
