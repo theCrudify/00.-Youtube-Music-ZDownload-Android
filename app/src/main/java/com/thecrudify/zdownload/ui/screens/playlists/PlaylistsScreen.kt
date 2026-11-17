@@ -1,6 +1,7 @@
 package com.thecrudify.zdownload.ui.screens.playlists
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,10 +97,12 @@ fun PlaylistsScreen(vm: LibraryViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Box(
-                            modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)).then(Modifier),
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(BgElevatedHover),
                             contentAlignment = Alignment.Center
                         ) {
-                            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) { drawRect(BgElevatedHover) }
                             Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = AccentCyan)
                         }
                         Column(Modifier.weight(1f)) {

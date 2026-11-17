@@ -53,6 +53,10 @@ internal fun AmbientBackground(isBusy: Boolean) {
         label = "orb2"
     )
 
+    val cBlue = AccentBlue
+    val cViolet = AccentViolet
+    val cCyan = AccentCyan
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         val w = size.width
         val h = size.height
@@ -62,7 +66,7 @@ internal fun AmbientBackground(isBusy: Boolean) {
         // Orb 1: Sapphire Blue Top-Left
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(AccentBlue.copy(alpha = 0.22f), Color.Transparent),
+                colors = listOf(cBlue.copy(alpha = 0.22f), Color.Transparent),
                 center = Offset(w * 0.15f + orb1Offset, h * 0.1f + orb1Offset),
                 radius = w * 0.7f
             ),
@@ -73,7 +77,7 @@ internal fun AmbientBackground(isBusy: Boolean) {
         // Orb 2: Electric Violet Bottom-Right
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(AccentViolet.copy(alpha = 0.18f), Color.Transparent),
+                colors = listOf(cViolet.copy(alpha = 0.18f), Color.Transparent),
                 center = Offset(w * 0.85f + orb2Offset, h * 0.85f + orb2Offset),
                 radius = w * 0.75f
             ),
@@ -84,7 +88,7 @@ internal fun AmbientBackground(isBusy: Boolean) {
         // Orb 3: Cyan Ambient Center
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(AccentCyan.copy(alpha = 0.10f), Color.Transparent),
+                colors = listOf(cCyan.copy(alpha = 0.10f), Color.Transparent),
                 center = Offset(w * 0.5f, h * 0.45f),
                 radius = w * 0.6f
             ),
@@ -99,13 +103,17 @@ internal fun AmbientBackground(isBusy: Boolean) {
    ========================================================================== */
 @Composable
 internal fun ParticleBurstEffect(onFinish: () -> Unit) {
+    val cyan = AccentCyan
+    val blue = AccentBlue
+    val amber = AccentAmber
+    val violet = AccentViolet
     val particles = remember {
         List(30) {
             val angle = Random.nextFloat() * 2f * Math.PI.toFloat()
             val speed = Random.nextFloat() * 250f + 100f
             Triple(
                 Offset(kotlin.math.cos(angle) * speed, kotlin.math.sin(angle) * speed),
-                listOf(AccentCyan, AccentBlue, AccentAmber, AccentViolet).random(),
+                listOf(cyan, blue, amber, violet).random(),
                 Random.nextFloat() * 4f + 3f
             )
         }

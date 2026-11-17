@@ -37,27 +37,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.thecrudify.zdownload.data.model.DownloadState
 import com.thecrudify.zdownload.ui.components.EqualizerVisualizer
+import com.thecrudify.zdownload.ui.AppLanguage
+import com.thecrudify.zdownload.ui.LocalLang
 import com.thecrudify.zdownload.ui.theme.AccentCyan
 import com.thecrudify.zdownload.ui.theme.BgBase
 import com.thecrudify.zdownload.ui.theme.TextMuted
 import com.thecrudify.zdownload.ui.theme.TextSecondary
+import com.thecrudify.zdownload.viewmodel.LibraryViewModel
 import com.thecrudify.zdownload.viewmodel.MainViewModel
 
-// Language Strings Dictionary
-enum class AppLanguage { ID, EN }
+typealias AppLanguage = com.thecrudify.zdownload.ui.AppLanguage
 
 /** Width buckets: <360dp small phones (4"), <600dp phones, >=600dp tablets; two-pane on wide landscape. */
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    libraryVm: LibraryViewModel? = null
 ) {
     val url by viewModel.url.collectAsState()
     val selectedFormat by viewModel.selectedFormat.collectAsState()
     val downloadState by viewModel.downloadState.collectAsState()
     val scrollState = rememberScrollState()
 
-    var currentLang by remember { mutableStateOf(AppLanguage.ID) }
+    val currentLang = LocalLang.current
     val isBusy = downloadState is DownloadState.FetchingInfo || downloadState is DownloadState.Downloading
 
     // Particle burst trigger on download success
@@ -202,7 +205,9 @@ fun HomeScreen(
                     isBusy = isBusy,
                     currentLang = currentLang,
                     showCreatorTag = !isCompact,
-                    onLangChanged = { currentLang = it }
+                    onLangChanged = { lang ->
+                        libraryVm?.setLanguage(if (lang == AppLanguage.ID) "id" else "en")
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(if (isTablet) 36.dp else 24.dp))

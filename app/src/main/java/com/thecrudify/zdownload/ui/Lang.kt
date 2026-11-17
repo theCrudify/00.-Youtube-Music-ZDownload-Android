@@ -3,7 +3,8 @@ package com.thecrudify.zdownload.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
-import com.thecrudify.zdownload.ui.screens.home.AppLanguage
+
+enum class AppLanguage { ID, EN }
 
 val LocalLang = staticCompositionLocalOf { AppLanguage.ID }
 

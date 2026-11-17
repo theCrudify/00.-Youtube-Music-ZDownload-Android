@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
+enum class ThemeMode {
+    SYSTEM, LIGHT, DARK
+}
+
 /** What the player needs to pick up where it left off after the process is recreated. */
 data class PlaybackSnapshot(
     val queue: List<String> = emptyList(),
@@ -30,6 +34,7 @@ data class PlaybackSnapshot(
 class AppPreferences(private val context: Context) {
 
     private object Keys {
+        val themeMode = stringPreferencesKey("theme_mode")
         val language = stringPreferencesKey("language")
         val defaultFormat = stringPreferencesKey("default_format")
         val librarySort = stringPreferencesKey("library_sort")
@@ -42,13 +47,24 @@ class AppPreferences(private val context: Context) {
         val volume = floatPreferencesKey("playback_volume")
     }
 
-    val language: Flow<String> = context.dataStore.data.map { it[Keys.language] ?: "ID" }
+    val themeMode: Flow<ThemeMode> = context.dataStore.data.map {
+        val name = it[Keys.themeMode] ?: ThemeMode.SYSTEM.name
+        runCatching { ThemeMode.valueOf(name) }.getOrDefault(ThemeMode.SYSTEM)
+    }
+    val language: Flow<String> = context.dataStore.data.map { it[Keys.language] ?: "SYSTEM" }
     val defaultFormat: Flow<String> = context.dataStore.data.map { it[Keys.defaultFormat] ?: "ORIGINAL" }
     val librarySort: Flow<String> = context.dataStore.data.map { it[Keys.librarySort] ?: "DATE_ADDED" }
+    val defaultSpeed: Flow<Float> = context.dataStore.data.map { it[Keys.speed] ?: 1f }
+    val defaultRepeat: Flow<Int> = context.dataStore.data.map { it[Keys.repeat] ?: 0 }
+    val defaultShuffle: Flow<Boolean> = context.dataStore.data.map { it[Keys.shuffle] ?: false }
 
+    suspend fun setThemeMode(mode: ThemeMode) = set(Keys.themeMode, mode.name)
     suspend fun setLanguage(value: String) = set(Keys.language, value)
     suspend fun setDefaultFormat(value: String) = set(Keys.defaultFormat, value)
     suspend fun setLibrarySort(value: String) = set(Keys.librarySort, value)
+    suspend fun setDefaultSpeed(speed: Float) = set(Keys.speed, speed)
+    suspend fun setDefaultRepeat(repeat: Int) = set(Keys.repeat, repeat)
+    suspend fun setDefaultShuffle(shuffle: Boolean) = set(Keys.shuffle, shuffle)
 
     private suspend fun <T> set(key: Preferences.Key<T>, value: T) {
         context.dataStore.edit { it[key] = value }

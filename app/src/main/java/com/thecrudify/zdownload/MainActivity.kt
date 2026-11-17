@@ -50,6 +50,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.thecrudify.zdownload.ui.LocaleHelper
+import com.thecrudify.zdownload.ui.LocalLang
 import com.thecrudify.zdownload.ui.player.ExpandedPlayer
 import com.thecrudify.zdownload.ui.player.MiniPlayer
 import com.thecrudify.zdownload.ui.screens.downloads.DownloadsScreen
@@ -88,11 +94,29 @@ class MainActivity : ComponentActivity() {
         handleSharedIntent(intent)
 
         setContent {
-            ZDownloadTheme {
-                MainAppScreen(
-                    mainVm = mainViewModel,
-                    libraryVm = libraryViewModel
-                )
+            val themeMode by libraryViewModel.themeMode.collectAsState()
+            val languageCode by libraryViewModel.language.collectAsState()
+
+            val localizedContext = remember(languageCode) {
+                LocaleHelper.applyLocale(this@MainActivity, languageCode)
+            }
+            val appLanguage = remember(languageCode) {
+                LocaleHelper.toAppLanguage(languageCode)
+            }
+
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalConfiguration provides localizedContext.resources.configuration,
+                LocalLang provides appLanguage,
+                androidx.activity.compose.LocalActivityResultRegistryOwner provides this@MainActivity,
+                androidx.activity.compose.LocalOnBackPressedDispatcherOwner provides this@MainActivity
+            ) {
+                ZDownloadTheme(themeMode = themeMode) {
+                    MainAppScreen(
+                        mainVm = mainViewModel,
+                        libraryVm = libraryViewModel
+                    )
+                }
             }
         }
     }
@@ -202,7 +226,7 @@ fun MainAppScreen(
                             selected = selectedTab == MainTab.HOME,
                             onClick = { selectedTab = MainTab.HOME },
                             icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                            label = { Text(tr("Beranda", "Home"), fontSize = 11.sp) },
+                            label = { Text(stringResource(R.string.nav_home), fontSize = 11.sp) },
                             colors = navColors
                         )
 
@@ -210,7 +234,7 @@ fun MainAppScreen(
                             selected = selectedTab == MainTab.LIBRARY,
                             onClick = { selectedTab = MainTab.LIBRARY },
                             icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                            label = { Text("Library", fontSize = 11.sp) },
+                            label = { Text(stringResource(R.string.nav_library), fontSize = 11.sp) },
                             colors = navColors
                         )
 
@@ -218,7 +242,7 @@ fun MainAppScreen(
                             selected = selectedTab == MainTab.PLAYLISTS,
                             onClick = { selectedTab = MainTab.PLAYLISTS },
                             icon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
-                            label = { Text("Playlist", fontSize = 11.sp) },
+                            label = { Text(stringResource(R.string.nav_playlists), fontSize = 11.sp) },
                             colors = navColors
                         )
 
@@ -226,7 +250,7 @@ fun MainAppScreen(
                             selected = selectedTab == MainTab.DOWNLOADS,
                             onClick = { selectedTab = MainTab.DOWNLOADS },
                             icon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
-                            label = { Text(tr("Unduhan", "Downloads"), fontSize = 11.sp) },
+                            label = { Text(stringResource(R.string.nav_downloads), fontSize = 11.sp) },
                             colors = navColors
                         )
 
@@ -234,7 +258,7 @@ fun MainAppScreen(
                             selected = selectedTab == MainTab.SETTINGS,
                             onClick = { selectedTab = MainTab.SETTINGS },
                             icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text(tr("Pengaturan", "Settings"), fontSize = 11.sp) },
+                            label = { Text(stringResource(R.string.nav_settings), fontSize = 11.sp) },
                             colors = navColors
                         )
                     }
@@ -247,7 +271,7 @@ fun MainAppScreen(
                     .padding(innerPadding)
             ) {
                 when (selectedTab) {
-                    MainTab.HOME -> HomeScreen(viewModel = mainVm)
+                    MainTab.HOME -> HomeScreen(viewModel = mainVm, libraryVm = libraryVm)
                     MainTab.LIBRARY -> LibraryScreen(vm = libraryVm)
                     MainTab.PLAYLISTS -> PlaylistsScreen(vm = libraryVm)
                     MainTab.DOWNLOADS -> DownloadsScreen(vm = libraryVm)

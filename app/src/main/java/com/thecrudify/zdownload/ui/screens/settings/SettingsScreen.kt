@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Folder
@@ -29,7 +30,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
@@ -42,6 +45,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +60,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.thecrudify.zdownload.R
 import com.thecrudify.zdownload.data.model.AudioFormat
+import com.thecrudify.zdownload.data.prefs.ThemeMode
 import com.thecrudify.zdownload.ui.components.ScreenHeader
 import com.thecrudify.zdownload.ui.components.formatBytes
 import com.thecrudify.zdownload.ui.theme.AccentAmber
@@ -72,7 +80,6 @@ import com.thecrudify.zdownload.ui.theme.BorderSubtle
 import com.thecrudify.zdownload.ui.theme.TextMuted
 import com.thecrudify.zdownload.ui.theme.TextPrimary
 import com.thecrudify.zdownload.ui.theme.TextSecondary
-import com.thecrudify.zdownload.ui.tr
 import com.thecrudify.zdownload.viewmodel.LibraryViewModel
 import com.thecrudify.zdownload.viewmodel.MainViewModel
 
@@ -84,7 +91,11 @@ fun SettingsScreen(
     val stats by libraryVm.storageStats.collectAsState()
     val allTracks by libraryVm.allTracks.collectAsState()
     val defaultFormat by mainVm.selectedFormat.collectAsState()
+    val themeMode by libraryVm.themeMode.collectAsState()
     val language by libraryVm.language.collectAsState()
+    val defaultSpeed by libraryVm.defaultSpeed.collectAsState()
+    val defaultRepeat by libraryVm.defaultRepeat.collectAsState()
+    val defaultShuffle by libraryVm.defaultShuffle.collectAsState()
 
     var formatDropdownExpanded by remember { mutableStateOf(false) }
 
@@ -108,23 +119,154 @@ fun SettingsScreen(
             .padding(bottom = 96.dp)
     ) {
         ScreenHeader(
-            title = tr("Pengaturan & Penyimpanan", "Settings & Storage"),
-            subtitle = tr("Konfigurasi aplikasi dan manajemen file musik", "App configuration and storage management")
+            title = stringResource(R.string.settings_title),
+            subtitle = stringResource(R.string.settings_subtitle)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 1. Storage Stats Card
-        SectionCard(title = tr("Penyimpanan Perangkat", "Device Storage"), icon = Icons.Default.Storage) {
-            val total = stats?.totalBytes ?: 1L
-            val free = stats?.freeBytes ?: 0L
-            val music = stats?.musicBytes ?: 0L
-            val artwork = stats?.artworkBytes ?: 0L
-            val temp = stats?.tempBytes ?: 0L
-            val usedByApp = music + artwork + temp
-            val usedFraction = (usedByApp.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-
+        // 1. Appearance / Theme Mode
+        SectionCard(title = stringResource(R.string.settings_section_appearance), icon = Icons.Default.Palette) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.theme_mode_title),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SelectablePill(
+                        label = stringResource(R.string.theme_system),
+                        selected = themeMode == ThemeMode.SYSTEM,
+                        modifier = Modifier.weight(1f),
+                        onClick = { libraryVm.setThemeMode(ThemeMode.SYSTEM) }
+                    )
+                    SelectablePill(
+                        label = stringResource(R.string.theme_light),
+                        selected = themeMode == ThemeMode.LIGHT,
+                        modifier = Modifier.weight(1f),
+                        onClick = { libraryVm.setThemeMode(ThemeMode.LIGHT) }
+                    )
+                    SelectablePill(
+                        label = stringResource(R.string.theme_dark),
+                        selected = themeMode == ThemeMode.DARK,
+                        modifier = Modifier.weight(1f),
+                        onClick = { libraryVm.setThemeMode(ThemeMode.DARK) }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. Language Selection
+        SectionCard(title = stringResource(R.string.settings_section_language), icon = Icons.Default.Language) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = stringResource(R.string.language_title),
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                val normalizedLang = language.trim().uppercase()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SelectablePill(
+                        label = stringResource(R.string.language_system),
+                        selected = normalizedLang == "SYSTEM" || normalizedLang.isBlank(),
+                        modifier = Modifier.weight(1f),
+                        onClick = { libraryVm.setLanguage("SYSTEM") }
+                    )
+                    SelectablePill(
+                        label = "Bahasa",
+                        selected = normalizedLang == "ID" || normalizedLang == "IN",
+                        modifier = Modifier.weight(1f),
+                        onClick = { libraryVm.setLanguage("ID") }
+                    )
+                    SelectablePill(
+                        label = "English",
+                        selected = normalizedLang == "EN",
+                        modifier = Modifier.weight(1f),
+                        onClick = { libraryVm.setLanguage("EN") }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. Playback Defaults
+        SectionCard(title = stringResource(R.string.settings_section_playback), icon = Icons.Default.Speed) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Playback speed
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.playback_speed),
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    val speedOptions = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        speedOptions.forEach { spd ->
+                            SelectablePill(
+                                label = "${spd}x",
+                                selected = (defaultSpeed - spd).let { kotlin.math.abs(it) < 0.05f },
+                                modifier = Modifier.weight(1f),
+                                onClick = { libraryVm.setDefaultSpeed(spd) }
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 2.dp))
+
+                // Repeat mode
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.playback_repeat),
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        SelectablePill(
+                            label = "Off",
+                            selected = defaultRepeat == 0,
+                            modifier = Modifier.weight(1f),
+                            onClick = { libraryVm.setDefaultRepeat(0) }
+                        )
+                        SelectablePill(
+                            label = "All",
+                            selected = defaultRepeat == 1,
+                            modifier = Modifier.weight(1f),
+                            onClick = { libraryVm.setDefaultRepeat(1) }
+                        )
+                        SelectablePill(
+                            label = "One",
+                            selected = defaultRepeat == 2,
+                            modifier = Modifier.weight(1f),
+                            onClick = { libraryVm.setDefaultRepeat(2) }
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 2.dp))
+
+                // Shuffle mode switch
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -132,131 +274,34 @@ fun SettingsScreen(
                 ) {
                     Column {
                         Text(
-                            text = tr("Total Musik", "Total Music"),
+                            text = stringResource(R.string.playback_shuffle),
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (defaultShuffle) "Aktif / Active" else "Nonaktif / Inactive",
                             color = TextMuted,
                             fontSize = 12.sp
                         )
-                        Text(
-                            text = formatBytes(music),
-                            color = AccentCyan,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = tr("Ruang Tersisa", "Free Space"),
-                            color = TextMuted,
-                            fontSize = 12.sp
+                    Switch(
+                        checked = defaultShuffle,
+                        onCheckedChange = { libraryVm.setDefaultShuffle(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = AccentCyan,
+                            uncheckedTrackColor = BgElevatedHover
                         )
-                        Text(
-                            text = formatBytes(free),
-                            color = AccentEmerald,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                }
-
-                LinearProgressIndicator(
-                    progress = { usedFraction },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = AccentCyan,
-                    trackColor = BorderSubtle
-                )
-
-                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 4.dp))
-
-                StorageStatRow(
-                    label = tr("Jumlah lagu di library", "Tracks in library"),
-                    value = "${allTracks.size} lagu"
-                )
-                StorageStatRow(
-                    label = tr("Sampul album (cache)", "Cover art (cache)"),
-                    value = formatBytes(artwork)
-                )
-                StorageStatRow(
-                    label = tr("File sementara / unduhan parsial", "Temporary / partial files"),
-                    value = formatBytes(temp)
-                )
-                StorageStatRow(
-                    label = tr("Kapasitas penyimpanan", "Total storage capacity"),
-                    value = formatBytes(total)
-                )
-
-                stats?.musicPath?.let { path ->
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = tr("Lokasi Folder Musik:", "Music Directory:"),
-                        color = TextMuted,
-                        fontSize = 11.sp
                     )
-                    Text(
-                        text = path,
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = { libraryVm.verifyLibrary() },
-                        colors = ButtonDefaults.buttonColors(containerColor = AccentCyan, contentColor = BgBase),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Verified, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(tr("Periksa File", "Verify Files"), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    OutlinedButton(
-                        onClick = { libraryVm.clearTemp() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.CleaningServices, null, tint = AccentAmber, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(tr("Bersihkan Temp", "Clear Temp"), color = AccentAmber, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2. File Import / Export Operations
-        SectionCard(title = tr("Operasi File & Ekspor", "File Operations & Export"), icon = Icons.Default.Folder) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionItemRow(
-                    icon = Icons.Default.FileOpen,
-                    title = tr("Impor File Audio Lokal", "Import Local Audio Files"),
-                    subtitle = tr("Tambahkan MP3, FLAC, M4A, WAV, OPUS dari penyimpanan", "Add audio files from your device storage"),
-                    onClick = { importPicker.launch(arrayOf("audio/*")) }
-                )
-
-                ActionItemRow(
-                    icon = Icons.Default.FolderCopy,
-                    title = tr("Ekspor Seluruh Musik", "Export All Music"),
-                    subtitle = tr("Salin semua lagu ke folder eksternal atau kartu SD", "Copy all library songs to another folder or SD card"),
-                    onClick = { exportPicker.launch(null) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 3. Audio & Format Preferences
-        SectionCard(title = tr("Preferensi Audio & Unduhan", "Audio & Download Preferences"), icon = Icons.Default.MusicNote) {
+        // 4. Download Preferences
+        SectionCard(title = stringResource(R.string.settings_section_downloads), icon = Icons.Default.MusicNote) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier
@@ -268,7 +313,7 @@ fun SettingsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = tr("Format Unduhan Default", "Default Download Format"),
+                            text = stringResource(R.string.default_format_title),
                             color = TextPrimary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold
@@ -282,7 +327,7 @@ fun SettingsScreen(
 
                     Box {
                         Text(
-                            text = tr("Ubah", "Change"),
+                            text = stringResource(R.string.change),
                             color = AccentCyan,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -313,39 +358,149 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. Language & System
-        SectionCard(title = tr("Bahasa & Tampilan", "Language & Appearance"), icon = Icons.Default.Language) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = tr("Bahasa Aplikasi", "App Language"),
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
+        // 5. Device Storage
+        SectionCard(title = stringResource(R.string.settings_section_storage), icon = Icons.Default.Storage) {
+            val total = stats?.totalBytes ?: 1L
+            val free = stats?.freeBytes ?: 0L
+            val music = stats?.musicBytes ?: 0L
+            val artwork = stats?.artworkBytes ?: 0L
+            val temp = stats?.tempBytes ?: 0L
+            val usedByApp = music + artwork + temp
+            val usedFraction = (usedByApp.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.storage_total_music),
+                            color = TextMuted,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = formatBytes(music),
+                            color = AccentCyan,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = stringResource(R.string.storage_free_space),
+                            color = TextMuted,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = formatBytes(free),
+                            color = AccentEmerald,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                LinearProgressIndicator(
+                    progress = { usedFraction },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = AccentCyan,
+                    trackColor = BorderSubtle
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LanguagePill(
-                        label = "Bahasa Indonesia",
-                        selected = language == "ID",
-                        onClick = { libraryVm.setLanguage("ID") }
+                HorizontalDivider(color = BorderSubtle, modifier = Modifier.padding(vertical = 4.dp))
+
+                StorageStatRow(
+                    label = stringResource(R.string.storage_tracks_in_library),
+                    value = "${allTracks.size}"
+                )
+                StorageStatRow(
+                    label = stringResource(R.string.storage_artwork_cache),
+                    value = formatBytes(artwork)
+                )
+                StorageStatRow(
+                    label = stringResource(R.string.storage_temp_files),
+                    value = formatBytes(temp)
+                )
+                StorageStatRow(
+                    label = stringResource(R.string.storage_total_capacity),
+                    value = formatBytes(total)
+                )
+
+                stats?.musicPath?.let { path ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.storage_folder_location),
+                        color = TextMuted,
+                        fontSize = 11.sp
                     )
-                    LanguagePill(
-                        label = "English",
-                        selected = language == "EN",
-                        onClick = { libraryVm.setLanguage("EN") }
+                    Text(
+                        text = path,
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace
                     )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = { libraryVm.verifyLibrary() },
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentCyan, contentColor = BgBase),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Verified, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text(stringResource(R.string.btn_verify_files), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        onClick = { libraryVm.clearTemp() },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.CleaningServices, null, tint = AccentAmber, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text(stringResource(R.string.btn_clear_temp), color = AccentAmber, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 5. App Info
-        SectionCard(title = tr("Tentang ZDownload", "About ZDownload"), icon = Icons.Default.Info) {
+        // 6. File Operations
+        SectionCard(title = stringResource(R.string.settings_section_file_ops), icon = Icons.Default.Folder) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionItemRow(
+                    icon = Icons.Default.FileOpen,
+                    title = stringResource(R.string.import_local_audio),
+                    subtitle = stringResource(R.string.import_local_audio_desc),
+                    onClick = { importPicker.launch(arrayOf("audio/*")) }
+                )
+
+                ActionItemRow(
+                    icon = Icons.Default.FolderCopy,
+                    title = stringResource(R.string.export_all_music),
+                    subtitle = stringResource(R.string.export_all_music_desc),
+                    onClick = { exportPicker.launch(null) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 7. About Application
+        SectionCard(title = stringResource(R.string.settings_section_about), icon = Icons.Default.Info) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = "ZDownload Standalone Mobile Edition",
@@ -354,15 +509,12 @@ fun SettingsScreen(
                     fontSize = 15.sp
                 )
                 Text(
-                    text = tr("Versi 2.0.0 (Media3 ExoPlayer • yt-dlp on-device • Room DB)", "Version 2.0.0 (Media3 ExoPlayer • on-device yt-dlp • Room DB)"),
+                    text = stringResource(R.string.app_version_info),
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
                 Text(
-                    text = tr(
-                        "Aplikasi pemutar musik offline & pengunduh YouTube berstandar profesional. Sepenuhnya mandiri tanpa server perantara.",
-                        "Professional offline music player & YouTube downloader. Fully autonomous on-device engine without intermediate servers."
-                    ),
+                    text = stringResource(R.string.app_description),
                     color = TextMuted,
                     fontSize = 12.sp,
                     lineHeight = 16.sp
@@ -454,28 +606,30 @@ private fun ActionItemRow(
 }
 
 @Composable
-private fun LanguagePill(
+private fun SelectablePill(
     label: String,
     selected: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
             .background(if (selected) AccentCyan.copy(alpha = 0.2f) else BgElevatedHover)
             .border(
                 1.dp,
                 if (selected) AccentCyan else BorderSubtle,
-                RoundedCornerShape(20.dp)
+                RoundedCornerShape(12.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             color = if (selected) AccentCyan else TextSecondary,
             fontSize = 12.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
         )
     }
 }

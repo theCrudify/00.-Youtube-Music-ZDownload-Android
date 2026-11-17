@@ -49,8 +49,22 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private fun <T> kotlinx.coroutines.flow.Flow<T>.state(initial: T): StateFlow<T> =
         stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)
 
-    val language: StateFlow<String> = app.prefs.language.state("ID")
+    val themeMode: StateFlow<com.thecrudify.zdownload.data.prefs.ThemeMode> =
+        app.prefs.themeMode.state(com.thecrudify.zdownload.data.prefs.ThemeMode.SYSTEM)
+    fun setThemeMode(mode: com.thecrudify.zdownload.data.prefs.ThemeMode) =
+        viewModelScope.launch { app.prefs.setThemeMode(mode) }
+
+    val language: StateFlow<String> = app.prefs.language.state("SYSTEM")
     fun setLanguage(code: String) = viewModelScope.launch { app.prefs.setLanguage(code) }
+
+    val defaultSpeed: StateFlow<Float> = app.prefs.defaultSpeed.state(1f)
+    fun setDefaultSpeed(speed: Float) = viewModelScope.launch { app.prefs.setDefaultSpeed(speed) }
+
+    val defaultRepeat: StateFlow<Int> = app.prefs.defaultRepeat.state(0)
+    fun setDefaultRepeat(repeat: Int) = viewModelScope.launch { app.prefs.setDefaultRepeat(repeat) }
+
+    val defaultShuffle: StateFlow<Boolean> = app.prefs.defaultShuffle.state(false)
+    fun setDefaultShuffle(shuffle: Boolean) = viewModelScope.launch { app.prefs.setDefaultShuffle(shuffle) }
 
     // ---- Library ------------------------------------------------------------------------
 
