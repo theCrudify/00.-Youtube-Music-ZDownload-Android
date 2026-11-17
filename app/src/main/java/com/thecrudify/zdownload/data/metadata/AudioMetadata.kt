@@ -48,6 +48,16 @@ object MetadataReader {
             val hasAudio = text(MediaMetadataRetriever.METADATA_KEY_HAS_AUDIO) != null
             if (duration <= 0L || !hasAudio) throw UnreadableAudioException("File audio rusak atau formatnya tidak didukung")
 
+            val lyrics = runCatching {
+                val lrcFile = File(file.parentFile, "${file.nameWithoutExtension}.lrc")
+                if (lrcFile.isFile) {
+                    lrcFile.readText().trim().takeIf { it.isNotEmpty() }
+                } else if (file.extension.lowercase() in setOf("mp3", "flac", "m4a", "ogg")) {
+                    val audio = org.jaudiotagger.audio.AudioFileIO.read(file)
+                    audio.tag?.getFirst(org.jaudiotagger.tag.FieldKey.LYRICS)?.trim()?.takeIf { it.isNotEmpty() }
+                } else null
+            }.getOrNull()
+
             return AudioMetadata(
                 title = text(MediaMetadataRetriever.METADATA_KEY_TITLE),
                 artist = text(MediaMetadataRetriever.METADATA_KEY_ARTIST),
@@ -62,7 +72,8 @@ object MetadataReader {
                 bitrate = number(MediaMetadataRetriever.METADATA_KEY_BITRATE),
                 sampleRate = if (Build.VERSION.SDK_INT >= 31) number(MediaMetadataRetriever.METADATA_KEY_SAMPLERATE) else null,
                 mimeType = text(MediaMetadataRetriever.METADATA_KEY_MIMETYPE) ?: "audio/*",
-                artwork = mmr.embeddedPicture
+                artwork = mmr.embeddedPicture,
+                lyrics = lyrics
             )
         } finally {
             runCatching { mmr.release() }

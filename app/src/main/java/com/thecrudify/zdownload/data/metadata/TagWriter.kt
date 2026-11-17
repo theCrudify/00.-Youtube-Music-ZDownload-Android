@@ -14,7 +14,8 @@ data class TagEdit(
     val albumArtist: String,
     val genre: String,
     val year: Int?,
-    val trackNumber: Int?
+    val trackNumber: Int?,
+    val lyrics: String? = null
 )
 
 /**
@@ -50,6 +51,7 @@ object TagWriter {
             set(FieldKey.GENRE, edit.genre)
             set(FieldKey.YEAR, edit.year?.toString())
             set(FieldKey.TRACK, edit.trackNumber?.toString())
+            set(FieldKey.LYRICS, edit.lyrics)
             if (artwork != null && artwork.isFile) {
                 tag.deleteArtworkField()
                 tag.setField(ArtworkFactory.createArtworkFromFile(artwork))

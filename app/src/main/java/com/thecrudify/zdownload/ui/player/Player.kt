@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -62,6 +63,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -137,17 +141,19 @@ fun MiniPlayer(playback: PlaybackController, state: PlayerState, onExpand: () ->
 
 private val SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f)
 
-/** Full-screen Now Playing: artwork, timeline, transport, repeat/shuffle, speed, volume and the queue. */
+/** Full-screen Now Playing: artwork, timeline, transport, repeat/shuffle, speed, volume, lyrics, and the queue. */
 @Composable
 fun ExpandedPlayer(
     playback: PlaybackController,
     state: PlayerState,
     isFavorite: Boolean,
+    lyrics: String? = null,
     onToggleFavorite: () -> Unit,
-    onCollapse: () -> Unit
+    onCollapse: () -> Unit,
+    onEditLyrics: (() -> Unit)? = null
 ) {
     val current = state.current
-    var showQueue by rememberSaveable { mutableStateOf(false) }
+    var activeTab by rememberSaveable { mutableStateOf("artwork") } // "artwork", "queue", "lyrics"
 
     BoxWithConstraints(
         modifier = Modifier
@@ -167,15 +173,26 @@ fun ExpandedPlayer(
                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = tr("Tutup pemutar", "Close player"), tint = TextPrimary)
                 }
                 Text(
-                    if (showQueue) tr("Antrean", "Queue") else tr("Sedang diputar", "Now playing"),
+                    when (activeTab) {
+                        "queue" -> tr("Antrean", "Queue")
+                        "lyrics" -> tr("Lirik Lagu", "Lyrics")
+                        else -> tr("Sedang diputar", "Now playing")
+                    },
                     color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = { showQueue = !showQueue }) {
+                IconButton(onClick = { activeTab = if (activeTab == "lyrics") "artwork" else "lyrics" }) {
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = tr("Lirik", "Lyrics"),
+                        tint = if (activeTab == "lyrics") AccentCyan else TextPrimary
+                    )
+                }
+                IconButton(onClick = { activeTab = if (activeTab == "queue") "artwork" else "queue" }) {
                     Icon(
                         Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = tr("Antrean", "Queue"),
-                        tint = if (showQueue) AccentCyan else TextPrimary
+                        tint = if (activeTab == "queue") AccentCyan else TextPrimary
                     )
                 }
             }
@@ -190,8 +207,11 @@ fun ExpandedPlayer(
             if (wide) {
                 Row(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                        if (showQueue) QueueList(playback, state)
-                        else Artwork(current.artworkPath, Modifier.fillMaxHeight(0.85f).aspectRatio(1f), corner = 20.dp)
+                        when (activeTab) {
+                            "queue" -> QueueList(playback, state)
+                            "lyrics" -> LyricsView(lyrics, onEditLyrics)
+                            else -> Artwork(current.artworkPath, Modifier.fillMaxHeight(0.85f).aspectRatio(1f), corner = 20.dp)
+                        }
                     }
                     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
                         Controls(playback, state, isFavorite, onToggleFavorite)
@@ -199,8 +219,11 @@ fun ExpandedPlayer(
                 }
             } else {
                 Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
-                    if (showQueue) QueueList(playback, state)
-                    else Artwork(current.artworkPath, Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f), corner = 20.dp)
+                    when (activeTab) {
+                        "queue" -> QueueList(playback, state)
+                        "lyrics" -> LyricsView(lyrics, onEditLyrics)
+                        else -> Artwork(current.artworkPath, Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f), corner = 20.dp)
+                    }
                 }
                 Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
                     Controls(playback, state, isFavorite, onToggleFavorite)
@@ -351,6 +374,48 @@ private fun QueueList(playback: PlaybackController, state: PlayerState) {
                     }
                     IconButton(onClick = { playback.removeQueueItem(i) }, modifier = Modifier.size(36.dp)) {
                         Icon(Icons.Default.Close, contentDescription = tr("Hapus dari antrean", "Remove from queue"), tint = TextSecondary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LyricsView(lyrics: String?, onEditLyrics: (() -> Unit)? = null) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!lyrics.isNullOrBlank()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = lyrics,
+                    color = TextPrimary,
+                    fontSize = 17.sp,
+                    lineHeight = 28.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(Icons.Default.Description, null, tint = TextMuted, modifier = Modifier.size(48.dp))
+                Text(tr("Lirik belum tersedia", "No lyrics available"), color = TextSecondary, fontSize = 15.sp)
+                if (onEditLyrics != null) {
+                    TextButton(onClick = onEditLyrics) {
+                        Text(tr("Tambah / Edit Lirik", "Add / Edit Lyrics"), color = AccentCyan)
                     }
                 }
             }

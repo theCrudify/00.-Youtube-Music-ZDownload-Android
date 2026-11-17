@@ -47,6 +47,7 @@ import com.thecrudify.zdownload.data.model.TrackInfo
 import com.thecrudify.zdownload.ui.theme.AccentAmber
 import com.thecrudify.zdownload.ui.theme.AccentBlue
 import com.thecrudify.zdownload.ui.theme.AccentCyan
+import com.thecrudify.zdownload.ui.theme.AccentEmerald
 import com.thecrudify.zdownload.ui.theme.AccentViolet
 import com.thecrudify.zdownload.ui.theme.BgBase
 import com.thecrudify.zdownload.ui.theme.BgElevated
@@ -272,7 +273,10 @@ private fun FormatCardItem(
     val accentColor = when (format) {
         AudioFormat.ORIGINAL -> AccentAmber
         AudioFormat.MP3 -> AccentCyan
+        AudioFormat.M4A -> AccentBlue
         AudioFormat.FLAC -> AccentViolet
+        AudioFormat.WAV -> AccentEmerald
+        AudioFormat.OPUS -> AccentCyan
     }
 
     val borderColor = if (isSelected) accentColor else BorderSubtle
@@ -324,7 +328,10 @@ private fun FormatCardItem(
                             text = when (format) {
                                 AudioFormat.ORIGINAL -> if (currentLang == AppLanguage.ID) "Stream Asli" else "Original Stream"
                                 AudioFormat.MP3 -> "320 kbps"
+                                AudioFormat.M4A -> "256 kbps"
                                 AudioFormat.FLAC -> "Lossless"
+                                AudioFormat.WAV -> "Studio PCM"
+                                AudioFormat.OPUS -> "Opus"
                             },
                             color = accentColor,
                             fontSize = 10.sp,
@@ -344,10 +351,22 @@ private fun FormatCardItem(
                             "Kompatibel di semua perangkat. Dikonversi ulang ke 320kbps."
                         else
                             "Plays on all devices. Re-encoded into 320kbps MP3."
+                        AudioFormat.M4A -> if (currentLang == AppLanguage.ID)
+                            "Format Apple AAC kualitas tinggi standar industri."
+                        else
+                            "Industry-standard high-quality AAC container."
                         AudioFormat.FLAC -> if (currentLang == AppLanguage.ID)
                             "Format lossless tanpa kompresi tambahan. File lebih besar."
                         else
                             "Lossless container without extra compression. Larger file size."
+                        AudioFormat.WAV -> if (currentLang == AppLanguage.ID)
+                            "Audio uncompressed studio quality."
+                        else
+                            "Uncompressed audio stream."
+                        AudioFormat.OPUS -> if (currentLang == AppLanguage.ID)
+                            "Format Opus modern dengan kompresi audio efisien."
+                        else
+                            "Modern highly-efficient Opus audio codec."
                     },
                     color = TextSecondary,
                     fontSize = 11.sp,

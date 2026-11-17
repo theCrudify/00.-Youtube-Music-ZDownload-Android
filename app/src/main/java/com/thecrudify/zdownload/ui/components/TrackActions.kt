@@ -265,6 +265,7 @@ private fun EditTrackDialog(
     var genre by rememberSaveable { mutableStateOf(track.entity.genre) }
     var year by rememberSaveable { mutableStateOf(track.entity.year?.toString().orEmpty()) }
     var trackNumber by rememberSaveable { mutableStateOf(track.entity.trackNumber?.toString().orEmpty()) }
+    var lyrics by rememberSaveable { mutableStateOf(track.entity.lyrics.orEmpty()) }
     var artwork by remember { mutableStateOf<Uri?>(null) }
     val canWrite = TagWriter.canWrite(track.entity.format)
     var writeToFile by rememberSaveable { mutableStateOf(canWrite) }
@@ -307,6 +308,14 @@ private fun EditTrackDialog(
                     Column(Modifier.weight(1f)) { Field(tr("Tahun", "Year"), year, numeric = true) { year = it } }
                     Column(Modifier.weight(1f)) { Field(tr("No. lagu", "Track no."), trackNumber, numeric = true) { trackNumber = it } }
                 }
+                OutlinedTextField(
+                    value = lyrics,
+                    onValueChange = { lyrics = it.take(5000) },
+                    label = { Text(tr("Lirik Lagu", "Lyrics")) },
+                    minLines = 3,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable(enabled = canWrite) { writeToFile = !writeToFile }
@@ -331,7 +340,16 @@ private fun EditTrackDialog(
                 enabled = title.isNotBlank(),
                 onClick = {
                     onSave(
-                        TagEdit(title, artist, album, albumArtist, genre, year.toIntOrNull(), trackNumber.toIntOrNull()),
+                        TagEdit(
+                            title = title,
+                            artist = artist,
+                            album = album,
+                            albumArtist = albumArtist,
+                            genre = genre,
+                            year = year.toIntOrNull(),
+                            trackNumber = trackNumber.toIntOrNull(),
+                            lyrics = lyrics.trim().takeIf { it.isNotEmpty() }
+                        ),
                         artwork, writeToFile && canWrite
                     )
                 }

@@ -93,7 +93,8 @@ class LibraryRepository(
             dao.updateTrack(
                 existing.entity.copy(
                     durationMs = meta.durationMs, bitrate = meta.bitrate, sampleRate = meta.sampleRate,
-                    codec = meta.mimeType, fileSize = target.length(), artworkPath = artworkPath, isMissing = false
+                    codec = meta.mimeType, fileSize = target.length(), artworkPath = artworkPath, isMissing = false,
+                    lyrics = meta.lyrics ?: existing.entity.lyrics
                 )
             )
             scan(target)
@@ -119,7 +120,8 @@ class LibraryRepository(
                     artworkPath = artworkBytes?.let { storage.saveArtwork(id, it, artworkExtension(it)) },
                     filePath = target.absolutePath, storageId = defaultStorageId(),
                     sourceId = download.sourceId, sourceUrl = download.sourceUrl,
-                    dateAdded = System.currentTimeMillis()
+                    dateAdded = System.currentTimeMillis(),
+                    lyrics = meta.lyrics
                 )
             )
         } catch (e: Exception) {
@@ -187,7 +189,8 @@ class LibraryRepository(
                             artworkPath = meta.artwork?.takeIf { it.size <= MAX_ARTWORK_BYTES }
                                 ?.let { storage.saveArtwork(id, it, artworkExtension(it)) },
                             filePath = target.absolutePath, storageId = defaultStorageId(),
-                            sourceId = null, sourceUrl = null, dateAdded = System.currentTimeMillis()
+                            sourceId = null, sourceUrl = null, dateAdded = System.currentTimeMillis(),
+                            lyrics = meta.lyrics
                         )
                     )
                 } catch (e: Exception) {
@@ -234,7 +237,8 @@ class LibraryRepository(
                     artistId = dao.artistId(artist),
                     albumId = dao.albumId(album, clean(edit.albumArtist, artist)),
                     genre = clean(edit.genre, ""), year = edit.year, trackNumber = edit.trackNumber,
-                    artworkPath = artworkPath
+                    artworkPath = artworkPath,
+                    lyrics = edit.lyrics
                 )
             )
             dao.pruneUnused()

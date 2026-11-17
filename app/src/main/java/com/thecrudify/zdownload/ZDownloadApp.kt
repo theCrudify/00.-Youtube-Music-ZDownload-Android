@@ -48,6 +48,7 @@ class ZDownloadApp : Application() {
             updateYtDlpIfStale()
         }
         downloads.start()
+        playback.connect()
     }
 
     // yt-dlp must stay fresh to keep up with YouTube, but checking on every launch wastes data

@@ -59,8 +59,19 @@ class PlaybackController(
 
     private var controller: MediaController? = null
     private var volumeBeforeMute = 1f
+    private val pendingActions = mutableListOf<(MediaController) -> Unit>()
 
     val positionMs: Long get() = controller?.currentPosition?.coerceAtLeast(0) ?: 0
+
+    fun withController(action: (MediaController) -> Unit) {
+        val c = controller
+        if (c != null) {
+            action(c)
+        } else {
+            pendingActions.add(action)
+            connect()
+        }
+    }
 
     fun connect() {
         if (controller != null) return
@@ -70,6 +81,9 @@ class PlaybackController(
             val c = runCatching { future.get() }.getOrNull() ?: return@addListener
             controller = c
             c.addListener(listener)
+            val actions = pendingActions.toList()
+            pendingActions.clear()
+            actions.forEach { it(c) }
             scope.launch {
                 if (c.mediaItemCount == 0) restore(c)
                 publish()
@@ -195,12 +209,11 @@ class PlaybackController(
     // ---- Queue ---------------------------------------------------------------------------
 
     /** Replaces the queue with [tracks] and starts at [startIndex]. */
-    fun play(tracks: List<Track>, startIndex: Int = 0, shuffle: Boolean? = null) {
-        val c = controller ?: return
+    fun play(tracks: List<Track>, startIndex: Int = 0, shuffle: Boolean? = null) = withController { c ->
         val playable = tracks.filter { !it.entity.isMissing }
         if (playable.isEmpty()) {
             _errors.tryEmit("File lagu tidak ditemukan di perangkat")
-            return
+            return@withController
         }
         val startId = tracks.getOrNull(startIndex)?.id
         val index = playable.indexOfFirst { it.id == startId }.coerceAtLeast(0)
@@ -210,49 +223,43 @@ class PlaybackController(
         c.play()
     }
 
-    fun playNext(tracks: List<Track>) {
-        val c = controller ?: return
-        if (c.mediaItemCount == 0) return play(tracks)
+    fun playNext(tracks: List<Track>) = withController { c ->
+        if (c.mediaItemCount == 0) return@withController play(tracks)
         c.addMediaItems(c.currentMediaItemIndex + 1, tracks.filter { !it.entity.isMissing }.map { it.toMediaItem() })
     }
 
-    fun addToQueue(tracks: List<Track>) {
-        val c = controller ?: return
-        if (c.mediaItemCount == 0) return play(tracks)
+    fun addToQueue(tracks: List<Track>) = withController { c ->
+        if (c.mediaItemCount == 0) return@withController play(tracks)
         c.addMediaItems(tracks.filter { !it.entity.isMissing }.map { it.toMediaItem() })
     }
 
-    fun playQueueItem(index: Int) {
-        val c = controller ?: return
+    fun playQueueItem(index: Int) = withController { c ->
         c.seekToDefaultPosition(index)
         c.prepare()
         c.play()
     }
 
-    fun moveQueueItem(from: Int, to: Int) {
-        val c = controller ?: return
+    fun moveQueueItem(from: Int, to: Int) = withController { c ->
         if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount) c.moveMediaItem(from, to)
     }
 
-    fun removeQueueItem(index: Int) {
-        controller?.removeMediaItem(index)
+    fun removeQueueItem(index: Int) = withController { c ->
+        c.removeMediaItem(index)
     }
 
-    fun clearQueue() {
-        controller?.clearMediaItems()
+    fun clearQueue() = withController { c ->
+        c.clearMediaItems()
     }
 
     /** Call after tracks are deleted from the library so the queue doesn't hold dead entries. */
-    fun removeTracks(trackIds: Set<String>) {
-        val c = controller ?: return
+    fun removeTracks(trackIds: Set<String>) = withController { c ->
         for (i in c.mediaItemCount - 1 downTo 0) {
             if (c.getMediaItemAt(i).mediaId in trackIds) c.removeMediaItem(i)
         }
     }
 
     /** Call after a metadata edit so the queue, mini player and notification show the new info. */
-    fun refreshTrack(track: Track) {
-        val c = controller ?: return
+    fun refreshTrack(track: Track) = withController { c ->
         for (i in 0 until c.mediaItemCount) {
             if (c.getMediaItemAt(i).mediaId == track.id) c.replaceMediaItem(i, track.toMediaItem())
         }
@@ -260,8 +267,7 @@ class PlaybackController(
 
     // ---- Transport -----------------------------------------------------------------------
 
-    fun togglePlay() {
-        val c = controller ?: return
+    fun togglePlay() = withController { c ->
         if (c.isPlaying) {
             c.pause()
         } else {
@@ -271,22 +277,21 @@ class PlaybackController(
         }
     }
 
-    fun next() {
-        controller?.seekToNext()
+    fun next() = withController { c ->
+        c.seekToNext()
     }
 
     /** Restarts the song if it has played a few seconds, otherwise goes to the previous one (standard player behaviour). */
-    fun previous() {
-        controller?.seekToPrevious()
+    fun previous() = withController { c ->
+        c.seekToPrevious()
     }
 
-    fun seekTo(positionMs: Long) {
-        controller?.seekTo(positionMs)
+    fun seekTo(positionMs: Long) = withController { c ->
+        c.seekTo(positionMs)
     }
 
     /** off → all → one → off */
-    fun cycleRepeat() {
-        val c = controller ?: return
+    fun cycleRepeat() = withController { c ->
         c.repeatMode = when (c.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
@@ -294,21 +299,19 @@ class PlaybackController(
         }
     }
 
-    fun toggleShuffle() {
-        val c = controller ?: return
+    fun toggleShuffle() = withController { c ->
         c.shuffleModeEnabled = !c.shuffleModeEnabled
     }
 
-    fun setSpeed(speed: Float) {
-        controller?.setPlaybackSpeed(speed)
+    fun setSpeed(speed: Float) = withController { c ->
+        c.setPlaybackSpeed(speed)
     }
 
-    fun setVolume(volume: Float) {
-        controller?.volume = volume.coerceIn(0f, 1f)
+    fun setVolume(volume: Float) = withController { c ->
+        c.volume = volume.coerceIn(0f, 1f)
     }
 
-    fun toggleMute() {
-        val c = controller ?: return
+    fun toggleMute() = withController { c ->
         if (c.volume > 0f) {
             volumeBeforeMute = c.volume
             c.volume = 0f
