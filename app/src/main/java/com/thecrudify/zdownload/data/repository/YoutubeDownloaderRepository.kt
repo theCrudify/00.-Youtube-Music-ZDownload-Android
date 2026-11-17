@@ -23,11 +23,14 @@ class YoutubeDownloaderRepository(private val context: Context) {
     suspend fun fetchTrackInfo(url: String): Result<TrackInfo> = withContext(Dispatchers.IO) {
         try {
             awaitEngines()
+            android.util.Log.d("ZDL_MEASURE", "INFO_START") // TEMP-MEASURE
             val request = YoutubeDLRequest(url)
-            request.addOption("--extractor-args", "youtube:player_client=android")
+            java.io.File(context.filesDir, "args").takeIf { it.exists() }?.readText()?.trim().let { c -> if (c == null) request.addOption("--extractor-args", "youtube:player_client=android") else if (c != "none") request.addOption("--extractor-args", "youtube:player_client=$c") } // TEMP-MEASURE
             // Share links often carry &list=…; without this yt-dlp resolves the whole playlist
             request.addOption("--no-playlist")
             val videoInfo = YoutubeDL.getInstance().getInfo(request)
+            videoInfo.formats?.forEach { f -> android.util.Log.d("ZDL_MEASURE", "FMT ${f.formatId} a=${f.acodec} v=${f.vcodec} abr=${f.abr} tbr=${f.tbr} ext=${f.ext}") } // TEMP-MEASURE
+            android.util.Log.d("ZDL_MEASURE", "INFO_END") // TEMP-MEASURE
             val track = TrackInfo(
                 id = videoInfo.id ?: "",
                 title = videoInfo.title ?: "Unknown Track",
@@ -59,8 +62,9 @@ class YoutubeDownloaderRepository(private val context: Context) {
                 mkdirs()
             }
 
+            android.util.Log.d("ZDL_MEASURE", "DL_START") // TEMP-MEASURE
             val request = YoutubeDLRequest(trackInfo.originalUrl)
-            request.addOption("--extractor-args", "youtube:player_client=android")
+            java.io.File(context.filesDir, "args").takeIf { it.exists() }?.readText()?.trim().let { c -> if (c == null) request.addOption("--extractor-args", "youtube:player_client=android") else if (c != "none") request.addOption("--extractor-args", "youtube:player_client=$c") } // TEMP-MEASURE
             request.addOption("-x")
             request.addOption("--audio-format", format.formatKey)
             request.addOption("--audio-quality", "0")
@@ -72,10 +76,12 @@ class YoutubeDownloaderRepository(private val context: Context) {
             request.addOption("--no-playlist")
 
             YoutubeDL.getInstance().execute(request) { progress, _, line ->
+                android.util.Log.d("ZDL_MEASURE", line ?: "") // TEMP-MEASURE
                 val progressFloat = (progress / 100f).coerceIn(0f, 1f)
                 onProgress(progressFloat, line ?: "Mengekstrak audio...")
             }
 
+            android.util.Log.d("ZDL_MEASURE", "DL_END") // TEMP-MEASURE
             // The finished audio is the largest file left (cover art is embedded and removed)
             val produced = workDir.listFiles()?.filter { it.isFile }?.maxByOrNull { it.length() }
                 ?: error("yt-dlp selesai tanpa menghasilkan file audio")
