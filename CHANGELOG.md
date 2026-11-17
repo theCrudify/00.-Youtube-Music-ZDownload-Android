@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased] — 2026-11-17
+## [1.1.0] — 2026-11-17
 
 ### Added
 - Responsive layout for 4" phones up to 13" tablets, including a two-pane layout in landscape.
