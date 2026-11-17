@@ -72,14 +72,23 @@ Content is drawn edge-to-edge (`enableEdgeToEdge()`), with status/navigation bar
 
 From the command line:
 ```bash
-./gradlew assembleDebug        # Windows: gradlew.bat assembleDebug
-# output: app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleRelease      # Windows: gradlew.bat assembleRelease
+# output: app/build/outputs/apk/release/app-<abi>-release-unsigned.apk  (sign before installing)
+./gradlew assembleDebug        # quick test build: app/build/outputs/apk/debug/app-<abi>-debug.apk
 ```
+
+One APK is produced **per CPU type** (`arm64-v8a` for almost every phone since 2017, `armeabi-v7a` for old 32-bit phones, `x86_64` for emulators). Release builds are shrunk with R8:
+
+| Build | Size |
+|---|---|
+| Old universal APK (all CPUs, no R8) | 108 MB |
+| Release `arm64-v8a` | ~34 MB |
+| Release `armeabi-v7a` | ~32 MB |
 
 Or in Android Studio:
 
 1. Go to **Build** menu > **Build Bundle(s) / APK(s)** > **Build APK(s)**.
-2. Once finished, click **locate** to get the generated `app-debug.apk`.
+2. Once finished, click **locate** and pick the APK for your phone's CPU (usually `arm64-v8a`).
 3. Transfer the `.apk` to any Android phone and install!
 
 ---
@@ -149,7 +158,16 @@ adb shell am start -a android.intent.action.SEND -t text/plain \
   -n com.thecrudify.zdownload/.MainActivity
 ```
 
+### Efficiency decisions
+- **Engine startup:** yt-dlp/FFmpeg init runs once in `ZDownloadApp.enginesReady`; every engine call awaits it, so a share intent on a cold start can't race it.
+- **yt-dlp self-update:** at most once per 24h, and *before* `enginesReady` completes. Updating while a request runs swaps the files under it and that request fails.
+- **Animations:** the background orbs and vinyl disc animate only while analyzing/downloading. When idle, nothing redraws, so the screen costs no GPU/battery.
+- **Progress:** UI updates are throttled to 5/s; yt-dlp prints far more lines than that.
+- **`--no-playlist`** on every request: YT Music share links carry `&list=…`, which otherwise resolves the whole playlist.
+- **Downloads go through `cacheDir`:** scoped storage only allows audio in `Music/`, but yt-dlp writes the cover as `.webp` there before embedding it. The finished audio is copied to `Music/ZDownload`.
+
 ### Gotchas
+- **R8 keep rules** (`app/proguard-rules.pro`): youtubedl-android, Jackson and Apache commons-compress use reflection. Removing a rule crashes the release build at startup. Always test a release build on a device after touching them.
 - **No colors in `Type.kt`.** Material 3 applies `typography.bodyLarge` as the default text style; a color there overrides every `Button`'s `contentColor` (this once made button labels unreadable).
 - **Modifier order for max width:** `widthIn(max = …)` must come *before* `fillMaxWidth()`, otherwise the cap is ignored.
 - Text is bilingual (ID/EN) via `AppLanguage` inline in the composables, not `strings.xml` yet.

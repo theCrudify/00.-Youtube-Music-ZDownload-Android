@@ -9,13 +9,12 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.launch
 
 class ZDownloadApp : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Completes when yt-dlp & FFmpeg are ready. Await before any YoutubeDL call (share intents can arrive first). */
+    /** Completes when yt-dlp & FFmpeg are ready (and yt-dlp updated, at most once a day). Await before any YoutubeDL call (share intents can arrive first). */
     lateinit var enginesReady: Deferred<Unit>
         private set
 
@@ -25,17 +24,17 @@ class ZDownloadApp : Application() {
             YoutubeDL.getInstance().init(this@ZDownloadApp)
             FFmpeg.getInstance().init(this@ZDownloadApp)
             Log.d(TAG, "YoutubeDL & FFmpeg initialized.")
+            // Update before signalling ready: replacing yt-dlp while a request runs makes that request fail
+            updateYtDlpIfStale()
         }
-        appScope.launch { updateYtDlpIfStale() }
     }
 
     // yt-dlp must stay fresh to keep up with YouTube, but checking on every launch wastes data
-    private suspend fun updateYtDlpIfStale() {
+    private fun updateYtDlpIfStale() {
         val prefs = getSharedPreferences("engine", MODE_PRIVATE)
         val now = System.currentTimeMillis()
         if (now - prefs.getLong(KEY_LAST_UPDATE, 0L) < UPDATE_INTERVAL_MS) return
         try {
-            enginesReady.await()
             val status = YoutubeDL.getInstance().updateYoutubeDL(this)
             prefs.edit().putLong(KEY_LAST_UPDATE, now).apply()
             Log.d(TAG, "yt-dlp update: $status")

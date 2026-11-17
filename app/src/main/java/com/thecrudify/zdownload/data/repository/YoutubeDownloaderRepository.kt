@@ -49,11 +49,14 @@ class YoutubeDownloaderRepository(private val context: Context) {
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
             awaitEngines()
-            // Save to standard Music directory or Downloads
             val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
-            val targetDir = File(musicDir, "ZDownload")
-            if (!targetDir.exists()) {
-                targetDir.mkdirs()
+            val targetDir = File(musicDir, "ZDownload").apply { mkdirs() }
+
+            // Work in private cache: scoped storage only allows audio files in Music/, and yt-dlp
+            // writes the cover as .webp there before embedding it, which fails with EPERM.
+            val workDir = File(context.cacheDir, "download").apply {
+                deleteRecursively()
+                mkdirs()
             }
 
             val request = YoutubeDLRequest(trackInfo.originalUrl)
@@ -65,23 +68,19 @@ class YoutubeDownloaderRepository(private val context: Context) {
             request.addOption("--add-metadata")
             request.addOption("--parse-metadata", "uploader:%(artist)s")
             request.addOption("--parse-metadata", "title:%(title)s")
-            request.addOption("-o", "${targetDir.absolutePath}/%(title)s.%(ext)s")
+            request.addOption("-o", "${workDir.absolutePath}/%(title)s.%(ext)s")
             request.addOption("--no-playlist")
-
-            var lastReportedFile: File? = null
 
             YoutubeDL.getInstance().execute(request) { progress, _, line ->
                 val progressFloat = (progress / 100f).coerceIn(0f, 1f)
                 onProgress(progressFloat, line ?: "Mengekstrak audio...")
             }
 
-            // Find the downloaded file in the target directory
-            val files = targetDir.listFiles()?.filter {
-                it.isFile && it.name.contains(trackInfo.id, ignoreCase = true) ||
-                        it.lastModified() > System.currentTimeMillis() - 30_000
-            }?.sortedByDescending { it.lastModified() }
-
-            val resultFile = files?.firstOrNull() ?: File(targetDir, "${trackInfo.title}.${format.extension}")
+            // The finished audio is the largest file left (cover art is embedded and removed)
+            val produced = workDir.listFiles()?.filter { it.isFile }?.maxByOrNull { it.length() }
+                ?: error("yt-dlp selesai tanpa menghasilkan file audio")
+            val resultFile = produced.copyTo(File(targetDir, produced.name), overwrite = true)
+            workDir.deleteRecursively()
 
             Result.success(resultFile)
         } catch (e: Exception) {
