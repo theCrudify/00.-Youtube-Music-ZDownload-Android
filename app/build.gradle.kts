@@ -2,6 +2,12 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+}
+
+// Room schema snapshots: the reference for writing migrations when the DB version changes
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {
@@ -12,8 +18,8 @@ android {
         applicationId = "com.thecrudify.zdownload"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -82,12 +88,28 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.coroutines.android)
 
+    // Library database
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Playback engine + background media session
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
+
+    // Preferences & playback session state
+    implementation(libs.androidx.datastore.preferences)
+
+    // Writes edited tags back into MP3/FLAC/M4A files (Android-compatible fork)
+    implementation(libs.jaudiotagger)
+
     // On-device yt-dlp & FFmpeg engine (no server)
     implementation(libs.youtubedl.library)
     implementation(libs.youtubedl.ffmpeg)
 
     // Testing
     testImplementation(libs.junit)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

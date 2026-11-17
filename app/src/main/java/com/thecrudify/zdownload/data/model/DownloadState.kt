@@ -14,7 +14,8 @@ sealed interface DownloadState {
     data class Success(
         val trackInfo: TrackInfo,
         val file: File,
-        val fileName: String
+        val fileName: String,
+        val trackId: String? = null
     ) : DownloadState
     data class Error(val message: String) : DownloadState
 }

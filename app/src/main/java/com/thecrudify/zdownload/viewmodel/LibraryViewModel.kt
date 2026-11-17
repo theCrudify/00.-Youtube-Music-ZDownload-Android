@@ -1,0 +1,253 @@
+package com.thecrudify.zdownload.viewmodel
+
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.thecrudify.zdownload.ZDownloadApp
+import com.thecrudify.zdownload.data.db.DownloadEntity
+import com.thecrudify.zdownload.data.db.PlaylistWithCount
+import com.thecrudify.zdownload.data.db.Track
+import com.thecrudify.zdownload.data.download.LiveProgress
+import com.thecrudify.zdownload.data.library.LibraryQuery
+import com.thecrudify.zdownload.data.library.LibrarySection
+import com.thecrudify.zdownload.data.library.TrackGroup
+import com.thecrudify.zdownload.data.library.TrackSort
+import com.thecrudify.zdownload.data.metadata.TagEdit
+import com.thecrudify.zdownload.data.repository.StorageStats
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+data class DownloadItem(val download: DownloadEntity, val progress: LiveProgress?)
+
+/** State and actions for everything outside Home: library, playlists, downloads list, storage. */
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+class LibraryViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val app = application as ZDownloadApp
+    private val library = app.library
+    val playback = app.playback
+
+    private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    /** One-off notices for the snackbar (results of actions, playback errors). */
+    val messages: SharedFlow<String> = _messages
+
+    private fun <T> kotlinx.coroutines.flow.Flow<T>.state(initial: T): StateFlow<T> =
+        stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)
+
+    val language: StateFlow<String> = app.prefs.language.state("ID")
+    fun setLanguage(code: String) = viewModelScope.launch { app.prefs.setLanguage(code) }
+
+    // ---- Library ------------------------------------------------------------------------
+
+    val allTracks: StateFlow<List<Track>> = library.tracks.state(emptyList())
+
+    val section = MutableStateFlow(LibrarySection.SONGS)
+    val query = MutableStateFlow("")
+    val sort = MutableStateFlow(TrackSort.DATE_ADDED)
+    /** The album / artist / genre currently opened inside a grouped section. */
+    val group = MutableStateFlow<String?>(null)
+    val selection = MutableStateFlow<Set<String>>(emptySet())
+
+    init {
+        viewModelScope.launch { app.playback.errors.collect { _messages.emit(it) } }
+        viewModelScope.launch {
+            sort.value = runCatching { TrackSort.valueOf(app.prefs.librarySort.first()) }.getOrDefault(TrackSort.DATE_ADDED)
+        }
+    }
+
+    fun setSection(value: LibrarySection) {
+        section.value = value
+        group.value = null
+        selection.value = emptySet()
+    }
+
+    fun setSort(value: TrackSort) {
+        sort.value = value
+        viewModelScope.launch { app.prefs.setLibrarySort(value.name) }
+    }
+
+    // Typing shouldn't re-filter thousands of rows on every keystroke
+    private val debouncedQuery = query.debounce(200)
+
+    val visibleTracks: StateFlow<List<Track>> =
+        combine(library.tracks, section, debouncedQuery, sort, group) { all, section, query, sort, group ->
+            LibraryQuery.tracks(all, section, query, sort, group)
+        }.flowOn(Dispatchers.Default).state(emptyList())
+
+    val groups: StateFlow<List<TrackGroup>> =
+        combine(library.tracks, section, debouncedQuery) { all, section, query ->
+            if (section.isGrouped) LibraryQuery.groups(all, section, query) else emptyList()
+        }.flowOn(Dispatchers.Default).state(emptyList())
+
+    fun toggleSelected(trackId: String) {
+        selection.value = selection.value.let { if (trackId in it) it - trackId else it + trackId }
+    }
+
+    fun selectAll(tracks: List<Track>) {
+        selection.value = tracks.map { it.id }.toSet()
+    }
+
+    fun clearSelection() {
+        selection.value = emptySet()
+    }
+
+    fun selectedTracks(): List<Track> = allTracks.value.filter { it.id in selection.value }
+
+    // ---- Playback shortcuts -------------------------------------------------------------
+
+    fun play(tracks: List<Track>, index: Int = 0, shuffle: Boolean? = null) = playback.play(tracks, index, shuffle)
+
+    fun playNext(tracks: List<Track>) {
+        playback.playNext(tracks)
+        notify("Diputar berikutnya")
+    }
+
+    fun addToQueue(tracks: List<Track>) {
+        playback.addToQueue(tracks)
+        notify("Ditambahkan ke antrean")
+    }
+
+    fun toggleFavorite(track: Track) = viewModelScope.launch { library.setFavorite(track.id, !track.isFavorite) }
+
+    fun toggleFavorite(trackId: String) = viewModelScope.launch {
+        library.getTrack(trackId)?.let { library.setFavorite(it.id, !it.isFavorite) }
+    }
+
+    // ---- Editing & removing -------------------------------------------------------------
+
+    fun saveMetadata(track: Track, edit: TagEdit, artwork: Uri?, writeToFile: Boolean) = viewModelScope.launch {
+        val note = runCatching { library.updateMetadata(track, edit, artwork, writeToFile) }
+            .getOrElse { "Gagal menyimpan: ${it.message}" }
+        library.getTrack(track.id)?.let(playback::refreshTrack)
+        notify(note ?: if (writeToFile) "Info lagu disimpan, termasuk ke file" else "Info lagu disimpan")
+    }
+
+    fun delete(tracks: List<Track>, deleteFiles: Boolean) = viewModelScope.launch {
+        playback.removeTracks(tracks.map { it.id }.toSet())
+        val failed = library.delete(tracks, deleteFiles)
+        clearSelection()
+        notify(
+            when {
+                failed > 0 -> "${tracks.size} lagu dihapus dari library; $failed file tidak bisa dihapus"
+                deleteFiles -> "${tracks.size} lagu dan filenya dihapus"
+                else -> "${tracks.size} lagu dihapus dari library (file tetap ada)"
+            }
+        )
+    }
+
+    fun importAudio(uris: List<Uri>) = viewModelScope.launch {
+        if (uris.isEmpty()) return@launch
+        notify("Mengimpor ${uris.size} file…")
+        val result = library.importAudio(uris)
+        notify(
+            buildString {
+                append("${result.imported} lagu diimpor")
+                if (result.skipped.isNotEmpty()) append("; ${result.skipped.size} dilewati: ${result.skipped.first()}")
+            }
+        )
+        refreshStorage()
+    }
+
+    fun export(tracks: List<Track>, folder: Uri) = viewModelScope.launch {
+        val done = library.export(tracks, folder)
+        clearSelection()
+        notify("$done dari ${tracks.size} lagu disalin ke folder yang dipilih")
+    }
+
+    // ---- Playlists ----------------------------------------------------------------------
+
+    val playlists: StateFlow<List<PlaylistWithCount>> = library.playlists.state(emptyList())
+    val openPlaylistId = MutableStateFlow<Long?>(null)
+    val playlistTracks: StateFlow<List<Track>> =
+        openPlaylistId.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else library.playlistTracks(id) }
+            .state(emptyList())
+
+    fun createPlaylist(name: String, trackIds: List<String> = emptyList()) = viewModelScope.launch {
+        val id = library.createPlaylist(name)
+        if (trackIds.isNotEmpty()) {
+            library.addToPlaylist(id, trackIds)
+            clearSelection()
+            notify("${trackIds.size} lagu ditambahkan ke \"$name\"")
+        }
+    }
+
+    fun addToPlaylist(playlist: PlaylistWithCount, trackIds: List<String>) = viewModelScope.launch {
+        val added = library.addToPlaylist(playlist.playlist.id, trackIds)
+        clearSelection()
+        notify(if (added == 0) "Sudah ada di \"${playlist.playlist.name}\"" else "$added lagu ditambahkan ke \"${playlist.playlist.name}\"")
+    }
+
+    fun renamePlaylist(id: Long, name: String) = viewModelScope.launch { library.renamePlaylist(id, name) }
+
+    fun deletePlaylist(id: Long) = viewModelScope.launch {
+        library.deletePlaylist(id)
+        openPlaylistId.value = null
+    }
+
+    fun removeFromPlaylist(playlistId: Long, trackId: String) =
+        viewModelScope.launch { library.removeFromPlaylist(playlistId, trackId) }
+
+    fun movePlaylistTrack(playlistId: Long, from: Int, to: Int) = viewModelScope.launch {
+        val ids = playlistTracks.value.map { it.id }.toMutableList()
+        if (from !in ids.indices || to !in ids.indices) return@launch
+        ids.add(to, ids.removeAt(from))
+        library.setPlaylistOrder(playlistId, ids)
+    }
+
+    // ---- Downloads ----------------------------------------------------------------------
+
+    val downloads: StateFlow<List<DownloadItem>> =
+        combine(app.database.dao().observeDownloads(), app.downloads.live) { all, live ->
+            all.map { DownloadItem(it, live[it.id]) }
+        }.state(emptyList())
+
+    fun pauseDownload(id: Long) = viewModelScope.launch { app.downloads.pause(id) }
+    fun cancelDownload(id: Long) = viewModelScope.launch { app.downloads.cancel(id) }
+    fun retryDownload(id: Long) = viewModelScope.launch { app.downloads.retry(id) }
+    fun removeDownload(id: Long) = viewModelScope.launch { app.downloads.remove(id) }
+    fun clearFinishedDownloads() = viewModelScope.launch { app.downloads.clearFinished() }
+
+    fun playDownloaded(trackId: String) = viewModelScope.launch {
+        library.getTrack(trackId)?.let { playback.play(listOf(it)) } ?: notify("Lagu sudah tidak ada di library")
+    }
+
+    // ---- Storage ------------------------------------------------------------------------
+
+    val storageStats = MutableStateFlow<StorageStats?>(null)
+
+    fun refreshStorage() = viewModelScope.launch { storageStats.value = library.stats() }
+
+    fun verifyLibrary() = viewModelScope.launch {
+        val result = library.verify()
+        refreshStorage()
+        notify(
+            if (result.missing == 0) "${result.checked} lagu diperiksa, semua file ada"
+            else "${result.missing} dari ${result.checked} lagu filenya hilang (ditandai, tidak dihapus)"
+        )
+    }
+
+    fun clearTemp() = viewModelScope.launch {
+        val freed = library.clearTemp(app.downloads.workDirsInUse())
+        refreshStorage()
+        notify("File sementara dibersihkan (${freed / 1_048_576} MB)")
+    }
+
+    private fun notify(message: String) {
+        _messages.tryEmit(message)
+    }
+}

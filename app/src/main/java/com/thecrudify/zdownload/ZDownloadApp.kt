@@ -2,6 +2,14 @@ package com.thecrudify.zdownload
 
 import android.app.Application
 import android.util.Log
+import com.thecrudify.zdownload.data.db.AppDatabase
+import com.thecrudify.zdownload.data.download.DownloadManager
+import com.thecrudify.zdownload.data.download.DownloadService
+import com.thecrudify.zdownload.data.prefs.AppPreferences
+import com.thecrudify.zdownload.data.repository.LibraryRepository
+import com.thecrudify.zdownload.data.repository.YoutubeDownloaderRepository
+import com.thecrudify.zdownload.data.storage.MusicStorage
+import com.thecrudify.zdownload.playback.PlaybackController
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +21,18 @@ import kotlinx.coroutines.async
 class ZDownloadApp : Application() {
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    // App-wide singletons (manual dependency injection): created on first use, shared by every screen and service
+    val database by lazy { AppDatabase.create(this) }
+    val prefs by lazy { AppPreferences(this) }
+    val storage by lazy { MusicStorage(this) }
+    val engine by lazy { YoutubeDownloaderRepository(this) }
+    val library by lazy { LibraryRepository(this, database.dao(), storage) }
+    val downloads by lazy {
+        DownloadManager(database.dao(), engine, library, storage, appScope) { DownloadService.start(this) }
+    }
+    val playback by lazy { PlaybackController(this, library, prefs, mainScope) }
 
     /** Completes when yt-dlp & FFmpeg are ready (and yt-dlp updated, at most once a day). Await before any YoutubeDL call (share intents can arrive first). */
     lateinit var enginesReady: Deferred<Unit>
@@ -27,6 +47,7 @@ class ZDownloadApp : Application() {
             // Update before signalling ready: replacing yt-dlp while a request runs makes that request fail
             updateYtDlpIfStale()
         }
+        downloads.start()
     }
 
     // yt-dlp must stay fresh to keep up with YouTube, but checking on every launch wastes data
