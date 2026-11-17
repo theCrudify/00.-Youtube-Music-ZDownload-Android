@@ -10,14 +10,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -33,7 +33,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,10 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.thecrudify.zdownload.ui.components.ConfirmDialog
 import com.thecrudify.zdownload.ui.components.EmptyState
 import com.thecrudify.zdownload.ui.components.ScreenHeader
@@ -57,12 +56,6 @@ import com.thecrudify.zdownload.ui.components.TrackMenu
 import com.thecrudify.zdownload.ui.components.TrackRow
 import com.thecrudify.zdownload.ui.components.formatDuration
 import com.thecrudify.zdownload.ui.components.rememberTrackActions
-import com.thecrudify.zdownload.ui.theme.AccentCyan
-import com.thecrudify.zdownload.ui.theme.BgBase
-import com.thecrudify.zdownload.ui.theme.BgElevatedHover
-import com.thecrudify.zdownload.ui.theme.BorderSubtle
-import com.thecrudify.zdownload.ui.theme.TextPrimary
-import com.thecrudify.zdownload.ui.theme.TextSecondary
 import com.thecrudify.zdownload.ui.tr
 import com.thecrudify.zdownload.viewmodel.LibraryViewModel
 
@@ -80,7 +73,7 @@ fun PlaylistsScreen(vm: LibraryViewModel) {
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         ScreenHeader("Playlist", tr("${playlists.size} playlist", "${playlists.size} playlists")) {
-            IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, tr("Playlist baru", "New playlist"), tint = TextPrimary) }
+            IconButton(onClick = { creating = true }) { Icon(Icons.Default.Add, tr("Playlist baru", "New playlist")) }
         }
         if (playlists.isEmpty()) {
             EmptyState(
@@ -92,22 +85,22 @@ fun PlaylistsScreen(vm: LibraryViewModel) {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(playlists, key = { it.playlist.id }) { item ->
                     Row(
-                        modifier = Modifier.fillMaxWidth().clickable { vm.openPlaylistId.value = item.playlist.id }.padding(horizontal = 20.dp, vertical = 10.dp),
+                        modifier = Modifier.fillMaxWidth().clickable { vm.openPlaylistId.value = item.playlist.id }.padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(52.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(BgElevatedHover),
+                                .size(56.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = AccentCyan)
+                            Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                         Column(Modifier.weight(1f)) {
-                            Text(item.playlist.name, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(tr("${item.trackCount} lagu", "${item.trackCount} songs"), color = TextSecondary, fontSize = 12.sp)
+                            Text(item.playlist.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(tr("${item.trackCount} lagu", "${item.trackCount} songs"), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -132,31 +125,24 @@ private fun PlaylistDetail(vm: LibraryViewModel, playlistId: Long, name: String)
     BackHandler { vm.openPlaylistId.value = null }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { vm.openPlaylistId.value = null }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Kembali", "Back"), tint = TextPrimary) }
-            Column(Modifier.weight(1f)) {
-                Text(name, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    tr("${tracks.size} lagu", "${tracks.size} songs") + " • " + formatDuration(tracks.sumOf { it.entity.durationMs }),
-                    color = TextSecondary, fontSize = 12.sp
-                )
-            }
-            IconButton(onClick = { renaming = true }) { Icon(Icons.Default.Edit, tr("Ganti nama", "Rename"), tint = TextPrimary) }
-            IconButton(onClick = { deleting = true }) { Icon(Icons.Default.Delete, tr("Hapus playlist", "Delete playlist"), tint = TextPrimary) }
+        ScreenHeader(
+            title = name,
+            subtitle = tr("${tracks.size} lagu", "${tracks.size} songs") + " · " + formatDuration(tracks.sumOf { it.entity.durationMs }),
+            onBack = { vm.openPlaylistId.value = null }
+        ) {
+            IconButton(onClick = { renaming = true }) { Icon(Icons.Default.Edit, tr("Ganti nama", "Rename")) }
+            IconButton(onClick = { deleting = true }) { Icon(Icons.Default.Delete, tr("Hapus playlist", "Delete playlist")) }
         }
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(
-                onClick = { vm.play(tracks, shuffle = false) },
-                enabled = tracks.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(containerColor = AccentCyan, contentColor = BgBase),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.PlayArrow, null)
-                Text(tr("Putar", "Play"), fontWeight = FontWeight.Bold)
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { vm.play(tracks, shuffle = false) }, enabled = tracks.isNotEmpty(), modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(tr("Putar", "Play"))
             }
-            OutlinedButton(onClick = { vm.play(tracks, shuffle = true) }, enabled = tracks.isNotEmpty(), modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.Shuffle, null, tint = AccentCyan)
-                Text(tr(" Acak", " Shuffle"), color = AccentCyan, fontWeight = FontWeight.Bold)
+            FilledTonalButton(onClick = { vm.play(tracks, shuffle = true) }, enabled = tracks.isNotEmpty(), modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Shuffle, null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(tr("Acak", "Shuffle"))
             }
         }
         if (tracks.isEmpty()) {
@@ -175,14 +161,14 @@ private fun PlaylistDetail(vm: LibraryViewModel, playlistId: Long, name: String)
                     ) {
                         var menu by remember { mutableStateOf(false) }
                         // shortcut: up/down buttons instead of drag-and-drop; swap in a reorder library if drag is wanted
-                        IconButton(onClick = { vm.movePlaylistTrack(playlistId, index, index - 1) }, enabled = index > 0, modifier = Modifier.size(34.dp)) {
-                            Icon(Icons.Default.KeyboardArrowUp, tr("Naikkan", "Move up"), tint = if (index > 0) TextSecondary else BorderSubtle)
+                        IconButton(onClick = { vm.movePlaylistTrack(playlistId, index, index - 1) }, enabled = index > 0) {
+                            Icon(Icons.Default.KeyboardArrowUp, tr("Naikkan", "Move up"))
                         }
-                        IconButton(onClick = { vm.movePlaylistTrack(playlistId, index, index + 1) }, enabled = index < tracks.lastIndex, modifier = Modifier.size(34.dp)) {
-                            Icon(Icons.Default.KeyboardArrowDown, tr("Turunkan", "Move down"), tint = if (index < tracks.lastIndex) TextSecondary else BorderSubtle)
+                        IconButton(onClick = { vm.movePlaylistTrack(playlistId, index, index + 1) }, enabled = index < tracks.lastIndex) {
+                            Icon(Icons.Default.KeyboardArrowDown, tr("Turunkan", "Move down"))
                         }
                         Box {
-                            IconButton(onClick = { menu = true }, modifier = Modifier.size(38.dp)) { Icon(Icons.Default.MoreVert, tr("Opsi lagu", "Song options"), tint = TextSecondary) }
+                            IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, tr("Opsi lagu", "Song options")) }
                             TrackMenu(track, menu, { menu = false }, vm, actions) {
                                 DropdownMenuItem(
                                     text = { Text(tr("Keluarkan dari playlist ini", "Remove from this playlist")) },

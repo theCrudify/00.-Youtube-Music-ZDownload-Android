@@ -1,9 +1,7 @@
 package com.thecrudify.zdownload.ui.theme
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 // Fallback scheme for Android < 12 (no dynamic color): M3 tonal palette from a warm vinyl-orange seed.
@@ -66,19 +64,3 @@ val LightFallbackScheme = lightColorScheme(
     surfaceContainerHigh = Color(0xFFF7E4DF),
     surfaceContainerHighest = Color(0xFFF1DFDA),
 )
-
-// shortcut: legacy names aliased onto M3 roles so unconverted screens keep compiling; delete once every screen uses MaterialTheme.colorScheme directly.
-val BgBase: Color @Composable get() = MaterialTheme.colorScheme.surface
-val BgElevated: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainer
-val BgElevatedHover: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainerHighest
-val SurfaceInput: Color @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
-val BorderSubtle: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
-val BorderHighlight: Color @Composable get() = MaterialTheme.colorScheme.outline
-val AccentCyan: Color @Composable get() = MaterialTheme.colorScheme.primary
-val AccentBlue: Color @Composable get() = MaterialTheme.colorScheme.secondary
-val AccentViolet: Color @Composable get() = MaterialTheme.colorScheme.tertiary
-val AccentAmber: Color @Composable get() = MaterialTheme.colorScheme.tertiary
-val AccentEmerald: Color @Composable get() = MaterialTheme.colorScheme.primary
-val TextPrimary: Color @Composable get() = MaterialTheme.colorScheme.onSurface
-val TextSecondary: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
-val TextMuted: Color @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant

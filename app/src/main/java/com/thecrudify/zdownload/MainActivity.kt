@@ -189,7 +189,8 @@ fun MainAppScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                Column {
+                // NavigationBar pads for the system nav bar itself; when it's hidden (Settings) the column must.
+                Column(if (showSettings) Modifier.navigationBarsPadding() else Modifier) {
                     // Persistent Mini Player above Navigation Bar
                     AnimatedVisibility(
                         visible = playerState.current != null && !isPlayerExpanded,

@@ -1,5 +1,7 @@
 package com.thecrudify.zdownload.ui.player
 
+import android.graphics.Bitmap
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -40,7 +42,9 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
@@ -48,11 +52,14 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -60,27 +67,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.thecrudify.zdownload.playback.PlaybackController
 import com.thecrudify.zdownload.playback.PlayerState
 import com.thecrudify.zdownload.ui.components.Artwork
 import com.thecrudify.zdownload.ui.components.formatDuration
-import com.thecrudify.zdownload.ui.theme.AccentCyan
-import com.thecrudify.zdownload.ui.theme.BgBase
-import com.thecrudify.zdownload.ui.theme.BgElevated
-import com.thecrudify.zdownload.ui.theme.BorderSubtle
-import com.thecrudify.zdownload.ui.theme.TextMuted
-import com.thecrudify.zdownload.ui.theme.TextPrimary
-import com.thecrudify.zdownload.ui.theme.TextSecondary
 import com.thecrudify.zdownload.ui.tr
 import kotlinx.coroutines.delay
 
@@ -98,6 +104,20 @@ private fun rememberPosition(playback: PlaybackController, state: PlayerState): 
     return position
 }
 
+/** Average color of the cover art (bitmap scaled to 1x1), or null when there is no readable cover. */
+@Composable
+private fun rememberCoverColor(path: String?): Color? {
+    val context = LocalContext.current
+    val color by produceState<Color?>(null, path) {
+        value = if (path == null) null else withContext(Dispatchers.IO) {
+            val request = ImageRequest.Builder(context).data(File(path)).size(32).allowHardware(false).build()
+            (context.imageLoader.execute(request) as? SuccessResult)?.drawable?.toBitmap()
+                ?.let { Color(Bitmap.createScaledBitmap(it, 1, 1, true).getPixel(0, 0)) }
+        }
+    }
+    return color
+}
+
 /** Always-visible bar above the navigation: what's playing, play/pause, next, progress. Tap to open Now Playing. */
 @Composable
 fun MiniPlayer(playback: PlaybackController, state: PlayerState, onExpand: () -> Unit, modifier: Modifier = Modifier) {
@@ -106,34 +126,31 @@ fun MiniPlayer(playback: PlaybackController, state: PlayerState, onExpand: () ->
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(BgElevated)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClickLabel = tr("Buka pemutar", "Open player"), onClick = onExpand)
     ) {
         LinearProgressIndicator(
             progress = { if (state.durationMs > 0) (position.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f },
-            modifier = Modifier.fillMaxWidth().height(2.dp),
-            color = AccentCyan,
-            trackColor = BorderSubtle
+            modifier = Modifier.fillMaxWidth().height(2.dp)
         )
         Row(
             modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Artwork(current.artworkPath, Modifier.size(44.dp))
+            Artwork(current.artworkPath, Modifier.size(48.dp), shape = MaterialTheme.shapes.small)
             Column(modifier = Modifier.weight(1f)) {
-                Text(current.title, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(current.artist, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(current.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(current.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             IconButton(onClick = playback::togglePlay) {
                 Icon(
                     if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (state.isPlaying) tr("Jeda", "Pause") else tr("Putar", "Play"),
-                    tint = TextPrimary, modifier = Modifier.size(30.dp)
+                    contentDescription = if (state.isPlaying) tr("Jeda", "Pause") else tr("Putar", "Play")
                 )
             }
             IconButton(onClick = playback::next) {
-                Icon(Icons.Default.SkipNext, contentDescription = tr("Berikutnya", "Next"), tint = TextPrimary)
+                Icon(Icons.Default.SkipNext, contentDescription = tr("Berikutnya", "Next"))
             }
         }
     }
@@ -154,11 +171,19 @@ fun ExpandedPlayer(
 ) {
     val current = state.current
     var activeTab by rememberSaveable { mutableStateOf("artwork") } // "artwork", "queue", "lyrics"
+    // 0.25 keeps onSurfaceVariant text at ~4.5:1 even on near-white or near-black covers.
+    val coverColor = rememberCoverColor(current?.artworkPath)
+    val background by animateColorAsState(
+        coverColor?.let { lerp(MaterialTheme.colorScheme.surface, it, 0.25f) } ?: MaterialTheme.colorScheme.surfaceContainer,
+        label = "playerBackground"
+    )
 
+    // Drawn outside the Scaffold, so nothing else sets the default text/icon color here.
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgBase)
+            .background(background)
             // Swallow taps so they don't reach the screen underneath
             .pointerInput(Unit) { detectTapGestures { } }
             .systemBarsPadding()
@@ -170,7 +195,7 @@ fun ExpandedPlayer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onCollapse) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = tr("Tutup pemutar", "Close player"), tint = TextPrimary)
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = tr("Tutup pemutar", "Close player"))
                 }
                 Text(
                     when (activeTab) {
@@ -178,28 +203,29 @@ fun ExpandedPlayer(
                         "lyrics" -> tr("Lirik Lagu", "Lyrics")
                         else -> tr("Sedang diputar", "Now playing")
                     },
-                    color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { activeTab = if (activeTab == "lyrics") "artwork" else "lyrics" }) {
                     Icon(
                         Icons.Default.Description,
                         contentDescription = tr("Lirik", "Lyrics"),
-                        tint = if (activeTab == "lyrics") AccentCyan else TextPrimary
+                        tint = if (activeTab == "lyrics") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
                 }
                 IconButton(onClick = { activeTab = if (activeTab == "queue") "artwork" else "queue" }) {
                     Icon(
                         Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = tr("Antrean", "Queue"),
-                        tint = if (activeTab == "queue") AccentCyan else TextPrimary
+                        tint = if (activeTab == "queue") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
 
             if (current == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(tr("Belum ada lagu yang diputar", "Nothing is playing"), color = TextSecondary)
+                    Text(tr("Belum ada lagu yang diputar", "Nothing is playing"), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 return@Column
             }
@@ -210,7 +236,7 @@ fun ExpandedPlayer(
                         when (activeTab) {
                             "queue" -> QueueList(playback, state)
                             "lyrics" -> LyricsView(lyrics, onEditLyrics)
-                            else -> Artwork(current.artworkPath, Modifier.fillMaxHeight(0.85f).aspectRatio(1f), corner = 20.dp)
+                            else -> Artwork(current.artworkPath, Modifier.fillMaxHeight(0.85f).aspectRatio(1f), shape = MaterialTheme.shapes.large)
                         }
                     }
                     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
@@ -222,7 +248,7 @@ fun ExpandedPlayer(
                     when (activeTab) {
                         "queue" -> QueueList(playback, state)
                         "lyrics" -> LyricsView(lyrics, onEditLyrics)
-                        else -> Artwork(current.artworkPath, Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f), corner = 20.dp)
+                        else -> Artwork(current.artworkPath, Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f), shape = MaterialTheme.shapes.large)
                     }
                 }
                 Column(Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
@@ -230,6 +256,7 @@ fun ExpandedPlayer(
                 }
             }
         }
+    }
     }
 }
 
@@ -240,18 +267,20 @@ private fun Controls(playback: PlaybackController, state: PlayerState, isFavorit
     // While dragging, the thumb follows the finger rather than jumping back to the playing position
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
-    val sliderColors = SliderDefaults.colors(thumbColor = AccentCyan, activeTrackColor = AccentCyan, inactiveTrackColor = BorderSubtle)
+    val colors = MaterialTheme.colorScheme
+    // On a cover-tinted background the default surfaceVariant track can vanish; outlineVariant stays visible.
+    val sliderColors = SliderDefaults.colors(inactiveTrackColor = colors.outlineVariant)
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(current.title, color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(current.artist, color = TextSecondary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(current.title, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(current.artist, style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = onToggleFavorite) {
             Icon(
                 if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                 contentDescription = if (isFavorite) tr("Hapus dari favorit", "Remove from favorites") else tr("Tambah ke favorit", "Add to favorites"),
-                tint = if (isFavorite) Color(0xFFF43F5E) else TextPrimary
+                tint = if (isFavorite) colors.primary else colors.onSurface
             )
         }
     }
@@ -265,8 +294,8 @@ private fun Controls(playback: PlaybackController, state: PlayerState, isFavorit
         modifier = Modifier.fillMaxWidth()
     )
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(formatDuration(if (dragging) dragValue.toLong() else position), color = TextMuted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-        Text(formatDuration(state.durationMs), color = TextMuted, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+        Text(formatDuration(if (dragging) dragValue.toLong() else position), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+        Text(formatDuration(state.durationMs), style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
     }
 
     Row(
@@ -278,24 +307,21 @@ private fun Controls(playback: PlaybackController, state: PlayerState, isFavorit
             Icon(
                 Icons.Default.Shuffle,
                 contentDescription = if (state.shuffle) tr("Acak aktif", "Shuffle on") else tr("Acak mati", "Shuffle off"),
-                tint = if (state.shuffle) AccentCyan else TextMuted
+                tint = if (state.shuffle) colors.primary else colors.onSurfaceVariant
             )
         }
         IconButton(onClick = playback::previous, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Default.SkipPrevious, contentDescription = tr("Sebelumnya", "Previous"), tint = TextPrimary, modifier = Modifier.size(36.dp))
+            Icon(Icons.Default.SkipPrevious, contentDescription = tr("Sebelumnya", "Previous"), modifier = Modifier.size(36.dp))
         }
-        IconButton(
-            onClick = playback::togglePlay,
-            modifier = Modifier.size(68.dp).clip(CircleShape).background(AccentCyan)
-        ) {
+        FilledIconButton(onClick = playback::togglePlay, modifier = Modifier.size(72.dp), shape = CircleShape) {
             Icon(
                 if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                 contentDescription = if (state.isPlaying) tr("Jeda", "Pause") else tr("Putar", "Play"),
-                tint = BgBase, modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(36.dp)
             )
         }
         IconButton(onClick = playback::next, modifier = Modifier.size(56.dp)) {
-            Icon(Icons.Default.SkipNext, contentDescription = tr("Berikutnya", "Next"), tint = TextPrimary, modifier = Modifier.size(36.dp))
+            Icon(Icons.Default.SkipNext, contentDescription = tr("Berikutnya", "Next"), modifier = Modifier.size(36.dp))
         }
         IconButton(onClick = playback::cycleRepeat) {
             Icon(
@@ -305,7 +331,7 @@ private fun Controls(playback: PlaybackController, state: PlayerState, isFavorit
                     Player.REPEAT_MODE_ALL -> tr("Ulangi semua", "Repeat all")
                     else -> tr("Ulangi mati", "Repeat off")
                 },
-                tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) TextMuted else AccentCyan
+                tint = if (state.repeatMode == Player.REPEAT_MODE_OFF) colors.onSurfaceVariant else colors.primary
             )
         }
     }
@@ -314,8 +340,8 @@ private fun Controls(playback: PlaybackController, state: PlayerState, isFavorit
         TextButton(onClick = { playback.setSpeed(SPEEDS[(SPEEDS.indexOf(state.speed).coerceAtLeast(0) + 1) % SPEEDS.size]) }) {
             Text(
                 "${state.speed.toString().removeSuffix(".0")}×",
-                color = if (state.speed == 1f) TextSecondary else AccentCyan,
-                fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.labelLarge,
+                color = if (state.speed == 1f) colors.onSurfaceVariant else colors.primary
             )
         }
         Spacer(Modifier.width(4.dp))
@@ -323,7 +349,7 @@ private fun Controls(playback: PlaybackController, state: PlayerState, isFavorit
             Icon(
                 if (state.volume == 0f) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                 contentDescription = if (state.volume == 0f) tr("Bunyikan", "Unmute") else tr("Bisukan", "Mute"),
-                tint = TextSecondary
+                tint = colors.onSurfaceVariant
             )
         }
         Slider(
@@ -346,9 +372,11 @@ private fun QueueList(playback: PlaybackController, state: PlayerState) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 tr("${state.queue.size} lagu di antrean", "${state.queue.size} songs in queue"),
-                color = TextSecondary, fontSize = 13.sp, modifier = Modifier.weight(1f)
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = playback::clearQueue) { Text(tr("Kosongkan", "Clear"), color = AccentCyan) }
+            TextButton(onClick = playback::clearQueue) { Text(tr("Kosongkan", "Clear")) }
         }
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             // Index in the key: the same song can be queued twice
@@ -361,19 +389,24 @@ private fun QueueList(playback: PlaybackController, state: PlayerState) {
                         .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Artwork(item.artworkPath, Modifier.size(40.dp))
+                    Artwork(item.artworkPath, Modifier.size(40.dp), shape = MaterialTheme.shapes.extraSmall)
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(item.title, color = if (isCurrent) AccentCyan else TextPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(item.artist, color = TextMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            item.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                        Text(item.artist, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     IconButton(onClick = { playback.moveQueueItem(i, i - 1) }, enabled = i > 0, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = tr("Naikkan", "Move up"), tint = if (i > 0) TextSecondary else BorderSubtle)
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = tr("Naikkan", "Move up"))
                     }
                     IconButton(onClick = { playback.moveQueueItem(i, i + 1) }, enabled = i < state.queue.lastIndex, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = tr("Turunkan", "Move down"), tint = if (i < state.queue.lastIndex) TextSecondary else BorderSubtle)
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = tr("Turunkan", "Move down"))
                     }
                     IconButton(onClick = { playback.removeQueueItem(i) }, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = tr("Hapus dari antrean", "Remove from queue"), tint = TextSecondary)
+                        Icon(Icons.Default.Close, contentDescription = tr("Hapus dari antrean", "Remove from queue"))
                     }
                 }
             }
@@ -399,10 +432,7 @@ private fun LyricsView(lyrics: String?, onEditLyrics: (() -> Unit)? = null) {
             ) {
                 Text(
                     text = lyrics,
-                    color = TextPrimary,
-                    fontSize = 17.sp,
-                    lineHeight = 28.sp,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium,
                     textAlign = TextAlign.Center
                 )
             }
@@ -411,11 +441,11 @@ private fun LyricsView(lyrics: String?, onEditLyrics: (() -> Unit)? = null) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Icon(Icons.Default.Description, null, tint = TextMuted, modifier = Modifier.size(48.dp))
-                Text(tr("Lirik belum tersedia", "No lyrics available"), color = TextSecondary, fontSize = 15.sp)
+                Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
+                Text(tr("Lirik belum tersedia", "No lyrics available"), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (onEditLyrics != null) {
                     TextButton(onClick = onEditLyrics) {
-                        Text(tr("Tambah / Edit Lirik", "Add / Edit Lyrics"), color = AccentCyan)
+                        Text(tr("Tambah / Edit Lirik", "Add / Edit Lyrics"))
                     }
                 }
             }

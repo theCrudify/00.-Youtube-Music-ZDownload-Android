@@ -32,6 +32,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,20 +45,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.thecrudify.zdownload.data.db.PlaylistWithCount
 import com.thecrudify.zdownload.data.db.Track
 import com.thecrudify.zdownload.data.metadata.TagEdit
 import com.thecrudify.zdownload.data.metadata.TagWriter
-import com.thecrudify.zdownload.ui.theme.AccentCyan
-import com.thecrudify.zdownload.ui.theme.TextMuted
-import com.thecrudify.zdownload.ui.theme.TextPrimary
-import com.thecrudify.zdownload.ui.theme.TextSecondary
 import com.thecrudify.zdownload.ui.tr
 import com.thecrudify.zdownload.viewmodel.LibraryViewModel
 import java.io.File
@@ -92,7 +91,7 @@ fun shareTracks(context: Context, tracks: List<Track>) {
 private fun MenuItem(icon: ImageVector, label: String, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(label) },
-        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
+        leadingIcon = { Icon(icon, contentDescription = null) },
         onClick = onClick
     )
 }
@@ -235,14 +234,18 @@ fun PlaylistPickerDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = AccentCyan)
-                        Text(tr("Playlist baru…", "New playlist…"), color = AccentCyan)
+                        Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text(tr("Playlist baru…", "New playlist…"), color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 items(playlists, key = { it.playlist.id }) { playlist ->
                     Column(modifier = Modifier.fillMaxWidth().clickable { onPick(playlist) }.padding(vertical = 10.dp)) {
-                        Text(playlist.playlist.name, color = TextPrimary)
-                        Text(tr("${playlist.trackCount} lagu", "${playlist.trackCount} songs"), color = TextMuted, fontSize = 12.sp)
+                        Text(playlist.playlist.name)
+                        Text(
+                            tr("${playlist.trackCount} lagu", "${playlist.trackCount} songs"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -293,7 +296,12 @@ private fun EditTrackDialog(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (artwork != null) {
-                        coil.compose.AsyncImage(model = artwork, contentDescription = null, modifier = Modifier.size(64.dp))
+                        coil.compose.AsyncImage(
+                            model = artwork,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(64.dp).clip(MaterialTheme.shapes.small)
+                        )
                     } else {
                         Artwork(track.entity.artworkPath, Modifier.size(64.dp))
                     }
@@ -321,7 +329,7 @@ private fun EditTrackDialog(
                     modifier = Modifier.clickable(enabled = canWrite) { writeToFile = !writeToFile }
                 ) {
                     Checkbox(checked = writeToFile, enabled = canWrite, onCheckedChange = { writeToFile = it })
-                    Text(tr("Tulis juga ke tag di dalam file", "Also write to the file's own tags"), color = if (canWrite) TextPrimary else TextMuted)
+                    Text(tr("Tulis juga ke tag di dalam file", "Also write to the file's own tags"), color = if (canWrite) Color.Unspecified else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f))
                 }
                 Text(
                     if (canWrite) tr(
@@ -331,7 +339,8 @@ private fun EditTrackDialog(
                         "Format .${track.entity.format} tidak mendukung penulisan tag, jadi perubahan disimpan di library aplikasi ini saja. File audio tidak diubah.",
                         ".${track.entity.format} files can't have tags written, so the change is kept in this app's library only. The audio file is not modified."
                     ),
-                    color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
