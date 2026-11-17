@@ -17,24 +17,23 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -47,8 +46,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalConfiguration
@@ -58,25 +55,16 @@ import com.thecrudify.zdownload.ui.LocaleHelper
 import com.thecrudify.zdownload.ui.LocalLang
 import com.thecrudify.zdownload.ui.player.ExpandedPlayer
 import com.thecrudify.zdownload.ui.player.MiniPlayer
-import com.thecrudify.zdownload.ui.screens.downloads.DownloadsScreen
 import com.thecrudify.zdownload.ui.screens.home.HomeScreen
 import com.thecrudify.zdownload.ui.screens.library.LibraryScreen
 import com.thecrudify.zdownload.ui.screens.playlists.PlaylistsScreen
 import com.thecrudify.zdownload.ui.screens.settings.SettingsScreen
-import com.thecrudify.zdownload.ui.theme.AccentCyan
-import com.thecrudify.zdownload.ui.theme.BgBase
-import com.thecrudify.zdownload.ui.theme.BgElevated
-import com.thecrudify.zdownload.ui.theme.BorderSubtle
-import com.thecrudify.zdownload.ui.theme.TextMuted
-import com.thecrudify.zdownload.ui.theme.TextPrimary
 import com.thecrudify.zdownload.ui.theme.ZDownloadTheme
 import com.thecrudify.zdownload.ui.tr
 import com.thecrudify.zdownload.viewmodel.LibraryViewModel
 import com.thecrudify.zdownload.viewmodel.MainViewModel
 
-enum class MainTab {
-    HOME, LIBRARY, PLAYLISTS, DOWNLOADS, SETTINGS
-}
+enum class MainTab { HOME, LIBRARY, PLAYLISTS }
 
 class MainActivity : ComponentActivity() {
 
@@ -145,6 +133,7 @@ fun MainAppScreen(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     var isPlayerExpanded by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val playerState by libraryVm.playback.state.collectAsState()
@@ -174,6 +163,7 @@ fun MainAppScreen(
     LaunchedEffect(mainVm.sharedLinks) {
         mainVm.sharedLinks.collect {
             selectedTab = MainTab.HOME
+            showSettings = false
         }
     }
 
@@ -187,14 +177,19 @@ fun MainAppScreen(
     BackHandler(enabled = isPlayerExpanded) {
         isPlayerExpanded = false
     }
+    BackHandler(enabled = showSettings && !isPlayerExpanded) {
+        showSettings = false
+    }
 
-    Box(modifier = Modifier.fillMaxSize().background(BgBase)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = BgBase,
+            containerColor = MaterialTheme.colorScheme.surface,
+            // Each screen owns its status-bar inset (TopAppBar / statusBarsPadding); the bottom bar owns the nav-bar inset.
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
-                Column(modifier = Modifier.background(BgElevated)) {
+                Column {
                     // Persistent Mini Player above Navigation Bar
                     AnimatedVisibility(
                         visible = playerState.current != null && !isPlayerExpanded,
@@ -208,59 +203,12 @@ fun MainAppScreen(
                         )
                     }
 
-                    // Bottom Navigation Bar
-                    NavigationBar(
-                        containerColor = BgElevated,
-                        contentColor = TextPrimary,
-                        tonalElevation = 0.dp
-                    ) {
-                        val navColors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = AccentCyan,
-                            selectedTextColor = AccentCyan,
-                            unselectedIconColor = TextMuted,
-                            unselectedTextColor = TextMuted,
-                            indicatorColor = AccentCyan.copy(alpha = 0.15f)
-                        )
-
-                        NavigationBarItem(
-                            selected = selectedTab == MainTab.HOME,
-                            onClick = { selectedTab = MainTab.HOME },
-                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                            label = { Text(stringResource(R.string.nav_home), fontSize = 11.sp) },
-                            colors = navColors
-                        )
-
-                        NavigationBarItem(
-                            selected = selectedTab == MainTab.LIBRARY,
-                            onClick = { selectedTab = MainTab.LIBRARY },
-                            icon = { Icon(Icons.Default.LibraryMusic, contentDescription = null) },
-                            label = { Text(stringResource(R.string.nav_library), fontSize = 11.sp) },
-                            colors = navColors
-                        )
-
-                        NavigationBarItem(
-                            selected = selectedTab == MainTab.PLAYLISTS,
-                            onClick = { selectedTab = MainTab.PLAYLISTS },
-                            icon = { Icon(Icons.AutoMirrored.Filled.QueueMusic, contentDescription = null) },
-                            label = { Text(stringResource(R.string.nav_playlists), fontSize = 11.sp) },
-                            colors = navColors
-                        )
-
-                        NavigationBarItem(
-                            selected = selectedTab == MainTab.DOWNLOADS,
-                            onClick = { selectedTab = MainTab.DOWNLOADS },
-                            icon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
-                            label = { Text(stringResource(R.string.nav_downloads), fontSize = 11.sp) },
-                            colors = navColors
-                        )
-
-                        NavigationBarItem(
-                            selected = selectedTab == MainTab.SETTINGS,
-                            onClick = { selectedTab = MainTab.SETTINGS },
-                            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                            label = { Text(stringResource(R.string.nav_settings), fontSize = 11.sp) },
-                            colors = navColors
-                        )
+                    if (!showSettings) {
+                        NavigationBar {
+                            NavItem(selectedTab == MainTab.HOME, { selectedTab = MainTab.HOME }, Icons.Default.Download, stringResource(R.string.nav_downloads))
+                            NavItem(selectedTab == MainTab.LIBRARY, { selectedTab = MainTab.LIBRARY }, Icons.Default.LibraryMusic, stringResource(R.string.nav_library))
+                            NavItem(selectedTab == MainTab.PLAYLISTS, { selectedTab = MainTab.PLAYLISTS }, Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.nav_playlists))
+                        }
                     }
                 }
             }
@@ -270,12 +218,12 @@ fun MainAppScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                when (selectedTab) {
-                    MainTab.HOME -> HomeScreen(viewModel = mainVm, libraryVm = libraryVm)
+                if (showSettings) {
+                    SettingsScreen(libraryVm = libraryVm, mainVm = mainVm, onBack = { showSettings = false })
+                } else when (selectedTab) {
+                    MainTab.HOME -> HomeScreen(viewModel = mainVm, libraryVm = libraryVm, onOpenSettings = { showSettings = true })
                     MainTab.LIBRARY -> LibraryScreen(vm = libraryVm)
                     MainTab.PLAYLISTS -> PlaylistsScreen(vm = libraryVm)
-                    MainTab.DOWNLOADS -> DownloadsScreen(vm = libraryVm)
-                    MainTab.SETTINGS -> SettingsScreen(libraryVm = libraryVm, mainVm = mainVm)
                 }
             }
         }
@@ -299,4 +247,9 @@ fun MainAppScreen(
             )
         }
     }
+}
+
+@Composable
+private fun RowScope.NavItem(selected: Boolean, onClick: () -> Unit, icon: ImageVector, label: String) {
+    NavigationBarItem(selected = selected, onClick = onClick, icon = { Icon(icon, contentDescription = null) }, label = { Text(label) })
 }

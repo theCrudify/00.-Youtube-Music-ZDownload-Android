@@ -86,7 +86,8 @@ import com.thecrudify.zdownload.viewmodel.MainViewModel
 @Composable
 fun SettingsScreen(
     libraryVm: LibraryViewModel,
-    mainVm: MainViewModel
+    mainVm: MainViewModel,
+    onBack: () -> Unit
 ) {
     val stats by libraryVm.storageStats.collectAsState()
     val allTracks by libraryVm.allTracks.collectAsState()
@@ -120,7 +121,8 @@ fun SettingsScreen(
     ) {
         ScreenHeader(
             title = stringResource(R.string.settings_title),
-            subtitle = stringResource(R.string.settings_subtitle)
+            subtitle = stringResource(R.string.settings_subtitle),
+            onBack = onBack
         )
 
         Spacer(modifier = Modifier.height(16.dp))

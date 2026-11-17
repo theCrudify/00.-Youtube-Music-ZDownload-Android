@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +32,7 @@ import com.thecrudify.zdownload.ui.theme.BgElevatedHover
 import com.thecrudify.zdownload.ui.theme.TextMuted
 import com.thecrudify.zdownload.ui.theme.TextPrimary
 import com.thecrudify.zdownload.ui.theme.TextSecondary
+import com.thecrudify.zdownload.ui.tr
 import java.io.File
 
 fun formatDuration(ms: Long): String {
@@ -69,13 +72,18 @@ fun Artwork(path: String?, modifier: Modifier = Modifier, corner: Dp = 8.dp) {
 }
 
 @Composable
-fun ScreenHeader(title: String, subtitle: String? = null, actions: @Composable () -> Unit = {}) {
+fun ScreenHeader(title: String, subtitle: String? = null, onBack: (() -> Unit)? = null, actions: @Composable () -> Unit = {}) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+            .padding(start = if (onBack != null) 4.dp else 20.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Kembali", "Back"))
+            }
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(title, color = TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
             if (subtitle != null) Text(subtitle, color = TextSecondary, fontSize = 13.sp, maxLines = 1)
