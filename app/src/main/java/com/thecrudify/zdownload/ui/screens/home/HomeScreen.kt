@@ -1,5 +1,25 @@
 package com.thecrudify.zdownload.ui.screens.home
 
+import android.os.Build
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
+import com.thecrudify.zdownload.data.db.Track
+import com.thecrudify.zdownload.ui.components.Artwork
+import java.io.File
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +60,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -78,10 +99,20 @@ fun HomeScreen(viewModel: MainViewModel, libraryVm: LibraryViewModel, onOpenSett
     val selectedFormat by viewModel.selectedFormat.collectAsState()
     val state by viewModel.downloadState.collectAsState()
     val downloads by libraryVm.downloads.collectAsState()
+    val allTracks by libraryVm.allTracks.collectAsState()
+    val recent = remember(allTracks) { allTracks.sortedByDescending { it.entity.dateAdded }.take(12) }
+    // The backdrop follows the music: the track being analyzed, else the newest song in the library.
+    val backdrop: Any? = (state as? DownloadState.TrackLoaded)?.trackInfo?.thumbnailUrl
+        ?: (state as? DownloadState.Downloading)?.trackInfo?.thumbnailUrl
+        ?: (state as? DownloadState.Success)?.trackInfo?.thumbnailUrl
+        ?: recent.firstOrNull()?.entity?.artworkPath?.let(::File)
 
-    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
+        HeroBackdrop(backdrop)
+        Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(stringResource(R.string.app_name)) },
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
             actions = {
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.nav_settings))
@@ -95,14 +126,23 @@ fun HomeScreen(viewModel: MainViewModel, libraryVm: LibraryViewModel, onOpenSett
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 item {
-                    LinkField(
-                        url = url,
-                        canSubmit = url.isNotBlank() && (state is DownloadState.Idle || state is DownloadState.Error),
-                        onUrlChanged = viewModel::onUrlChanged,
-                        onPaste = viewModel::pasteFromClipboard,
-                        onClear = viewModel::clearUrl,
-                        onAnalyze = viewModel::analyzeUrl
+                    Text(
+                        greeting(),
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp).semantics { heading() }
                     )
+                }
+                item {
+                    GlassCard {
+                        LinkField(
+                            url = url,
+                            canSubmit = url.isNotBlank() && (state is DownloadState.Idle || state is DownloadState.Error),
+                            onUrlChanged = viewModel::onUrlChanged,
+                            onPaste = viewModel::pasteFromClipboard,
+                            onClear = viewModel::clearUrl,
+                            onAnalyze = viewModel::analyzeUrl
+                        )
+                    }
                 }
                 item {
                     StateContent(
@@ -113,8 +153,13 @@ fun HomeScreen(viewModel: MainViewModel, libraryVm: LibraryViewModel, onOpenSett
                         onPlay = libraryVm::playDownloaded
                     )
                 }
+                if (recent.isNotEmpty()) {
+                    item { RecentRow(recent, onPlay = { libraryVm.play(recent, it, shuffle = false) }) }
+                } else if (state is DownloadState.Idle) {
+                    item { FirstRun() }
+                }
                 if (downloads.isEmpty()) {
-                    if (state is DownloadState.Idle) item { ShareHint() }
+                    if (state is DownloadState.Idle && recent.isNotEmpty()) item { ShareHint() }
                 } else {
                     item {
                         QueueHeader(
@@ -126,6 +171,112 @@ fun HomeScreen(viewModel: MainViewModel, libraryVm: LibraryViewModel, onOpenSett
                 }
             }
         }
+        }
+    }
+}
+
+@Composable
+private fun greeting(): String = when (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) {
+    in 4..10 -> tr("Selamat pagi", "Good morning")
+    in 11..14 -> tr("Selamat siang", "Good afternoon")
+    in 15..17 -> tr("Selamat sore", "Good evening")
+    else -> tr("Selamat malam", "Good night")
+}
+
+/** Blurred cover behind the top of the screen, fading into the surface; theme-colored glows when there is no cover. */
+@Composable
+private fun HeroBackdrop(model: Any?) {
+    val surface = MaterialTheme.colorScheme.surface
+    val primary = MaterialTheme.colorScheme.primary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    Box(Modifier.fillMaxWidth().height(420.dp)) {
+        if (model != null) {
+            // Modifier.blur only renders on Android 12+; below that the heavier scrim keeps text readable.
+            val strongBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            Crossfade(model, label = "backdrop") { m ->
+                AsyncImage(
+                    model = m,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alpha = if (strongBlur) 0.7f else 0.35f,
+                    modifier = Modifier.fillMaxSize().blur(60.dp)
+                )
+            }
+        } else {
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(Brush.radialGradient(listOf(primary.copy(alpha = 0.28f), Color.Transparent), center = Offset(size.width * 0.15f, size.height * 0.1f), radius = size.width * 0.8f))
+                drawCircle(Brush.radialGradient(listOf(tertiary.copy(alpha = 0.2f), Color.Transparent), center = Offset(size.width * 0.95f, size.height * 0.35f), radius = size.width * 0.7f))
+            }
+        }
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(surface.copy(alpha = 0.2f), surface.copy(alpha = 0.6f), surface))))
+    }
+}
+
+/** Frosted panel: translucent surface + hairline border, so the blurred cover shows through. */
+@Composable
+private fun GlassCard(content: @Composable () -> Unit) {
+    Surface(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f),
+        shape = MaterialTheme.shapes.extraLarge,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+    ) { Box(Modifier.padding(vertical = 8.dp)) { content() } }
+}
+
+@Composable
+private fun RecentRow(tracks: List<Track>, onPlay: (Int) -> Unit) {
+    Column(Modifier.padding(top = 24.dp)) {
+        Text(
+            tr("Baru ditambahkan", "Recently added"),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() }
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(tracks, key = { _, t -> t.id }) { index, track ->
+                Column(
+                    Modifier.width(140.dp).clip(MaterialTheme.shapes.medium).clickable(onClickLabel = tr("Putar", "Play")) { onPlay(index) }
+                ) {
+                    Artwork(track.entity.artworkPath, Modifier.size(140.dp), shape = MaterialTheme.shapes.medium)
+                    Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                    Text(track.artistName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
+/** First launch, empty library: a vinyl drawn in theme colors instead of a blank screen. */
+@Composable
+private fun FirstRun() {
+    val groove = MaterialTheme.colorScheme.onSurface
+    val label = MaterialTheme.colorScheme.primary
+    val disc = MaterialTheme.colorScheme.surfaceContainerHighest
+    Column(Modifier.fillMaxWidth().padding(top = 40.dp, start = 32.dp, end = 32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(Modifier.size(180.dp)) {
+            val r = size.minDimension / 2
+            drawCircle(disc, r)
+            for (i in 1..6) drawCircle(groove.copy(alpha = 0.07f), r * (0.45f + i * 0.085f), style = Stroke(1.dp.toPx()))
+            drawCircle(label, r * 0.32f)
+            drawCircle(disc, r * 0.05f)
+        }
+        Text(
+            tr("Koleksimu masih kosong", "Your collection is empty"),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(top = 24.dp)
+        )
+        Text(
+            tr(
+                "Tempel link di atas, atau tekan Bagikan di aplikasi YouTube / YouTube Music lalu pilih ZDownload.",
+                "Paste a link above, or tap Share in YouTube / YouTube Music and pick ZDownload."
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
 }
 
@@ -154,7 +305,9 @@ private fun LinkField(
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { if (canSubmit) onAnalyze() })
+            keyboardActions = KeyboardActions(onGo = { if (canSubmit) onAnalyze() }),
+            // The glass card is the visual container; the border only appears while typing.
+            colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color.Transparent)
         )
         if (canSubmit) {
             Button(onClick = onAnalyze, modifier = Modifier.fillMaxWidth()) { Text(tr("Cari lagu", "Find track")) }
